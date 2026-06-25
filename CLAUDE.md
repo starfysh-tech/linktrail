@@ -37,6 +37,9 @@ Never fork or reimplement normalization per side.
 
 - **Git workflow: commit and push directly to `main`** (solo personal project; no
   feature branches or PRs required).
+- **Versioning: bump the minor per slice** (`0.<slice>.0`), keeping
+  `extension/manifest.config.ts` and `package.json` in sync. Do it in the slice's
+  commit so Chrome sees a new version on reload.
 - **Secrets/local dev**: pull env with `vercel env pull .env.local`. `.env.local`
   is gitignored. Expected vars: `DATABASE_URL` (Neon), write token, read token.
   Never commit secrets.
