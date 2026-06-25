@@ -120,6 +120,16 @@ Notes for the disclosure form:
 - [x] Data is NOT used for purposes unrelated to the extension's core functionality
 - [x] Data is NOT used for creditworthiness or lending purposes
 
+### Remote Code
+
+**Does this item use remote code?** → **No, I am not using remote code.**
+
+All JavaScript is bundled in the package. There is no `eval`/`new Function`, no
+externally-loaded scripts, no `importScripts`, and no CDN/runtime imports (Vite
+production build; verified). Network requests (`fetch`) only transfer the user's
+own data to/from the backend they configure — they do not load or execute code.
+Page favicons displayed in the popup are images, not executable code.
+
 ## Privacy Policy
 
 **Privacy Policy URL** [REQUIRED]
