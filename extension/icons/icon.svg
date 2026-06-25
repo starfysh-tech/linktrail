@@ -1,0 +1,13 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A84FF"/>
+      <stop offset="1" stop-color="#2A9FFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Apple-style rounded-square app surface -->
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#g)"/>
+  <!-- White bookmark glyph (capture / keep) -->
+  <path d="M48 28 h32 a8 8 0 0 1 8 8 v68 l-24 -16 -24 16 v-68 a8 8 0 0 1 8 -8 z"
+        fill="#FFFFFF"/>
+</svg>

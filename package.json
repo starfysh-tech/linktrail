@@ -1,12 +1,13 @@
 {
   "name": "linktrail",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "description": "Capture the current tab into a personal RSS-backed reading history.",
   "scripts": {
     "test": "bun test",
     "migrate": "bun run scripts/migrate.ts",
+    "reset": "bun run scripts/reset-items.ts",
     "build:ext": "vite build --config extension/vite.config.ts",
     "dev:ext": "vite --config extension/vite.config.ts"
   },

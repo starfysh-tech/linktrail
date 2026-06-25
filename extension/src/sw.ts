@@ -22,10 +22,8 @@ import {
 
 const BADGE_CLEAR_MS = 2000;
 
-// Notifications require an iconUrl; this 1×1 transparent PNG is a placeholder —
-// a real branded icon set is a later polish item (not part of Slice 5).
-const ICON =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+// Notifications require an iconUrl; use the extension's own branded icon.
+const ICON = chrome.runtime.getURL("icons/128.png");
 
 // Stable id so a repeated failure replaces the prior notification rather than stacking.
 const FAIL_NOTIF_ID = "linktrail-capture-failure";
