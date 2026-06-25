@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Local env / secrets (Vercel: `vercel env pull .env.local`)
+.env
+.env.local
+.env*.local
+
+# Vercel
+.vercel/
+
+# OS / editor
+.DS_Store
