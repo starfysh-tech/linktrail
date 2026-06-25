@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+# Bun is the canonical toolchain — bun.lock is the single lockfile.
+package-lock.json
 
 # Build output
 dist/
@@ -13,5 +15,12 @@ dist/
 # Vercel
 .vercel/
 
+# Local real secrets that Vercel cannot pull (Sensitive vars export empty).
+# No ".env" in the name so it survives `vercel env pull` and tooling guards.
+.secrets.local
+
 # OS / editor
 .DS_Store
+.vercel
+.env*
+.keys/

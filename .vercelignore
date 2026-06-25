@@ -1,0 +1,8 @@
+# The extension is not part of the Vercel deployment (load-unpacked in v1).
+# Vercel deploys only the backend functions in api/ plus the shared lib/.
+extension/
+tests/
+docs/
+scripts/
+dist/
+.claude/
