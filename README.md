@@ -9,6 +9,7 @@ extension is intentionally thin — vanilla HTML/CSS + TypeScript, no UI framewo
 with an Apple-native graphite-and-warm-amber "glass" look.
 
 **Links:** [Landing page](https://starfysh-tech.github.io/linktrail/) ·
+[History app](https://linktrail-alpha.vercel.app/app/) (read-token gated) ·
 [Privacy policy](https://starfysh-tech.github.io/linktrail/privacy.html) ·
 [Web Store listing prep](CHROMEWEBSTORE.md)
 
@@ -37,16 +38,18 @@ guarded by an unguessable **read token** carried in the feed URL.
 
 ## Layout
 
-A flat single repo — backend functions, a shared `lib/`, and the extension are
-sibling top-level concerns (not a workspaces monorepo).
+A flat single repo — backend functions, a shared `lib/`, the extension, and the
+review web app are sibling top-level concerns (not a workspaces monorepo).
 
 ```
-api/         Vercel Functions (the only thing deployed)
+api/         Vercel Functions (deployed)
   save.ts    POST — auth, normalize, dedupe upsert
   feed.ts    GET  — RSS 2.0 feed, read-token guarded
   verify.ts  GET  — health/connectivity check
-lib/         Shared code (imported by api/ and extension/)
-  normalize.ts  canonical URL identity — shared by BOTH sides
+  status.ts  GET  — is this URL already saved? (popup "already saved" hint)
+  items.ts   GET  — full history as JSON, read-token guarded (review app)
+lib/         Shared code (imported by api/, extension/, web/)
+  normalize.ts  canonical URL identity — shared by ALL sides
   contract.ts   request/response shapes
   cors.ts       CORS handling
   db.ts         Neon HTTP-driver access
@@ -54,15 +57,17 @@ lib/         Shared code (imported by api/ and extension/)
 extension/   MV3 extension (Vite + @crxjs/vite-plugin)
   manifest.config.ts            manifest (pinned key → stable extension ID)
   popup.html / options.html     entry pages
-  src/{sw,popup,options,capture}.ts + css, icons/
+  src/{sw,popup,options,capture,queue}.ts + css, icons/
+web/         Review app — vanilla Vite, served at /app/ (same origin, deployed)
+  index.html, src/{app,view}.ts + app.css
 scripts/
   migrate.ts        create the saved_items table
   reset-items.ts    clear saved items
-tests/       The three test seams (see Test)
+tests/       The test seams (see Test)
 docs/
   prd-v1.md         authoritative PRD
   dev-setup.md       full setup + manual verify flow
-  issues/01–05       the five implementation slices
+  issues/01–06       the implementation slices
 ```
 
 ## Setup
@@ -141,14 +146,16 @@ docs are excluded via `.vercelignore`. Production is aliased to
 | ------ | ---- | ---- |
 | `POST` | `/api/save` | `Authorization: Bearer <WRITE_TOKEN>`; body `{ url, title }` |
 | `GET`  | `/api/feed?token=<READ_TOKEN>` | read token in query string |
-| `GET`  | `/api/verify` | health / connectivity check |
+| `GET`  | `/api/verify` | `Authorization: Bearer <WRITE_TOKEN>` — health / connectivity check |
+| `GET`  | `/api/status?url=<url>` | `Authorization: Bearer <WRITE_TOKEN>` — is this URL already saved? |
+| `GET`  | `/api/items?token=<READ_TOKEN>` | read token in query string — full history as JSON (review app) |
 
 ## Conventions
 
 - **Git:** commit and push directly to `main` (solo personal project; no feature
   branches or PRs).
 - **Versioning:** bump the minor per slice (`0.<slice>.0`), keeping
-  `extension/manifest.config.ts` and `package.json` in sync. Current: **0.8.0**.
+  `extension/manifest.config.ts` and `package.json` in sync. Current: **0.12.0**.
 - **Secrets:** never committed — `.env.local` and `.secrets.local` are gitignored.
 - **Auth:** two separate tokens — a bearer **write token** (save endpoint) and a
   distinct unguessable **read token** (in the feed URL).

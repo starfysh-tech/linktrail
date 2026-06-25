@@ -35,11 +35,15 @@ vercel deploy                   # preview URL, e.g. https://linktrail-xxxx.verce
 vercel deploy --prod            # production URL
 ```
 
-The deployment serves only the functions in `api/` (the extension is excluded
-via `.vercelignore`). Endpoints:
+The deployment serves the functions in `api/` plus the review web app built from
+`web/` (`vercel.json` runs `bun run build:web` → `web/dist`, served at `/app/`).
+The extension is excluded via `.vercelignore`. Endpoints:
 
 - `POST /api/save` — header `Authorization: Bearer <WRITE_TOKEN>`, body `{ url, title }`.
 - `GET  /api/feed?token=<READ_TOKEN>` — RSS 2.0, newest-first.
+- `GET  /api/verify` — header `Authorization: Bearer <WRITE_TOKEN>`, connectivity + feed URL.
+- `GET  /api/status?url=<url>` — header `Authorization: Bearer <WRITE_TOKEN>`, already-saved check.
+- `GET  /api/items?token=<READ_TOKEN>` — full history as JSON, newest-first (review app).
 
 ## Extension (load unpacked)
 
@@ -58,6 +62,18 @@ bun run build:ext               # builds to dist/extension/
      writeToken: "<WRITE_TOKEN>",
    });
    ```
+
+## Review app (web)
+
+```sh
+bun run dev:web                 # Vite dev server for web/ (local)
+bun run build:web               # builds to web/dist/app/ (what Vercel serves at /app/)
+```
+
+In production the app is at `<deployment>/app/`. Open it authenticated from the
+extension popup's **History** chip (it deep-links `…/app/?token=<read>`), or paste
+your read token into the gate. The app is read-only and only ever holds the read
+token; it fetches `/api/items` once and does search + date-filtering client-side.
 
 ## Verify the capture spine (Slice 1)
 
