@@ -20,3 +20,14 @@ export interface SaveResponse {
   outcome: SaveOutcome;
   id: string;
 }
+
+/**
+ * Verify endpoint response ("Test connection" in options). On success the
+ * backend returns the feed URL (read token embedded) so the options page can
+ * display/store it — the user only ever enters the backend URL + write token.
+ */
+export interface VerifyResponse {
+  ok: boolean;
+  feedUrl?: string;
+  error?: string;
+}

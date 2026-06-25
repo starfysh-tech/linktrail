@@ -12,6 +12,7 @@ export default defineManifest({
   permissions: ["activeTab", "storage"],
   background: { service_worker: "src/sw.ts", type: "module" },
   action: { default_title: "Save to Linktrail" },
+  options_ui: { page: "options.html", open_in_tab: true },
   commands: {
     "capture-current-tab": {
       suggested_key: { default: "Ctrl+Shift+L", mac: "Command+Shift+L" },

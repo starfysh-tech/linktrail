@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Linktrail Settings</title>
+    <link rel="stylesheet" href="src/options.css" />
+  </head>
+  <body>
+    <main class="page">
+      <h1>Linktrail</h1>
+
+      <section class="card" aria-labelledby="connection-heading">
+        <h2 id="connection-heading">Connection</h2>
+
+        <label class="field" for="backend-url">
+          <span>Backend URL</span>
+          <input id="backend-url" type="url" placeholder="https://your-app.vercel.app" autocomplete="off" />
+        </label>
+
+        <label class="field" for="write-token">
+          <span>Write token</span>
+          <input id="write-token" type="password" placeholder="Your write token" autocomplete="off" />
+        </label>
+
+        <div class="actions">
+          <button id="save" type="button" class="primary">Save</button>
+          <button id="test" type="button">Test connection</button>
+        </div>
+
+        <!-- Toggled by options.ts; data-state drives the accent colour. -->
+        <div id="result" class="result" role="status" hidden></div>
+      </section>
+
+      <section class="feed" aria-labelledby="feed-heading" hidden id="feed-section">
+        <h2 id="feed-heading">Your feed</h2>
+        <p class="hint">Subscribe to this URL in any RSS reader.</p>
+        <div class="feed-row">
+          <input id="feed-url" type="text" readonly />
+          <button id="copy" type="button">Copy</button>
+        </div>
+      </section>
+
+      <section class="shortcut" aria-labelledby="shortcut-heading">
+        <h2 id="shortcut-heading">Keyboard shortcut</h2>
+        <p>Save the current tab with <span id="shortcut" class="kbd">—</span></p>
+        <button id="change-shortcut" type="button">Change shortcut</button>
+      </section>
+    </main>
+
+    <script type="module" src="src/options.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,177 @@
+/* Apple-native "Safari-adjacent glass" options pane. Light/dark parity is
+   driven entirely by the CSS variables below; the glass material is applied
+   ONLY to .card per the design brief. */
+:root {
+  --accent: #0a84ff;
+  --bg: #f2f2f7;
+  --text: #1c1c1e;
+  --text-secondary: #6e6e73;
+  --surface: #ffffff;
+  --field-bg: #ffffff;
+  --field-border: rgba(0, 0, 0, 0.12);
+  --card-bg: rgba(255, 255, 255, 0.6);
+  --card-border: rgba(0, 0, 0, 0.08);
+  --button-bg: rgba(0, 0, 0, 0.05);
+  --ok: #248a3d;
+  --fail: #d70015;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1e;
+    --text: #f5f5f7;
+    --text-secondary: #98989d;
+    --surface: #2c2c2e;
+    --field-bg: #1c1c1e;
+    --field-border: rgba(255, 255, 255, 0.15);
+    --card-bg: rgba(58, 58, 60, 0.55);
+    --card-border: rgba(255, 255, 255, 0.1);
+    --button-bg: rgba(255, 255, 255, 0.1);
+    --ok: #30d158;
+    --fail: #ff453a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.page {
+  max-width: 460px;
+  margin: 0 auto;
+  padding: 32px 24px 48px;
+}
+
+h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0 0 24px;
+}
+
+h2 {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+
+/* The one glass surface. */
+.card {
+  background: var(--card-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 28px;
+}
+
+.field {
+  display: block;
+  margin-bottom: 14px;
+}
+
+.field span {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+input {
+  width: 100%;
+  padding: 8px 10px;
+  font: inherit;
+  color: var(--text);
+  background: var(--field-bg);
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+button {
+  padding: 7px 14px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--button-bg);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(0.97);
+}
+
+button.primary {
+  color: #fff;
+  background: var(--accent);
+}
+
+.result {
+  margin: 14px 0 0;
+  font-weight: 500;
+}
+
+.result[data-state="ok"] {
+  color: var(--ok);
+}
+
+.result[data-state="fail"] {
+  color: var(--fail);
+}
+
+.feed,
+.shortcut {
+  margin-bottom: 28px;
+}
+
+.hint {
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+
+.feed-row {
+  display: flex;
+  gap: 8px;
+}
+
+.feed-row input {
+  flex: 1;
+  color: var(--text-secondary);
+}
+
+.kbd {
+  display: inline-block;
+  padding: 2px 7px;
+  font-size: 12px;
+  background: var(--surface);
+  border: 1px solid var(--field-border);
+  border-radius: 6px;
+}
+
+.shortcut p {
+  margin: 0 0 12px;
+}

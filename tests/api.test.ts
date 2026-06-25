@@ -24,12 +24,16 @@ if (!process.env.DATABASE_URL) {
 let POST: (req: Request) => Promise<Response>;
 let GET: (req: Request) => Promise<Response>;
 let saveOPTIONS: (req: Request) => Promise<Response>;
+let verifyGET: (req: Request) => Promise<Response>;
+let verifyOPTIONS: (req: Request) => Promise<Response>;
 let sql: (typeof import("../lib/db"))["sql"];
 
 beforeAll(async () => {
   POST = (await import("../api/save")).POST;
   GET = (await import("../api/feed")).GET;
   saveOPTIONS = (await import("../api/save")).OPTIONS;
+  verifyGET = (await import("../api/verify")).GET;
+  verifyOPTIONS = (await import("../api/verify")).OPTIONS;
   sql = (await import("../lib/db")).sql;
 });
 
@@ -93,6 +97,41 @@ describe("GET /api/feed — auth (no DB)", () => {
   it("401s with a wrong token", async () => {
     const res = await GET(new Request("https://x/api/feed?token=wrong"));
     expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /api/verify — auth & CORS (no DB)", () => {
+  it("401s with no Authorization header, body { ok: false }", async () => {
+    const res = await verifyGET(new Request("https://x/api/verify"));
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as { ok: boolean }).ok).toBe(false);
+  });
+
+  it("401s with a wrong bearer token", async () => {
+    const res = await verifyGET(
+      new Request("https://x/api/verify", { headers: { Authorization: "Bearer wrong" } }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("verify OPTIONS returns 204 with permissive CORS origin", async () => {
+    const res = await verifyOPTIONS(new Request("https://x/api/verify", { method: "OPTIONS" }));
+    expect(res.status).toBe(204);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+  });
+});
+
+describe("GET /api/verify — success (DB-gated)", () => {
+  dbit("with a valid write token returns 200, ok: true, and the read feed URL", async () => {
+    const res = await verifyGET(
+      new Request("https://x/api/verify", {
+        headers: { Authorization: `Bearer ${process.env.WRITE_TOKEN}` },
+      }),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { ok: boolean; feedUrl: string };
+    expect(body.ok).toBe(true);
+    expect(body.feedUrl).toContain("/api/feed?token=");
   });
 });
 
