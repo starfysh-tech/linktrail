@@ -122,7 +122,10 @@ Notes for the disclosure form:
 
 **Privacy Policy URL** [REQUIRED]
 
-Host `docs/privacy-policy.md` at a public, stable URL before submitting (for example, GitHub Pages for this repo or a public gist). Paste that URL here once live, and verify it loads without a login wall.
+https://starfysh-tech.github.io/linktrail/privacy.html
+
+Published via GitHub Pages (`main:/docs`). Verify it loads without a login wall
+before submitting. Source of truth: `docs/privacy.html` (and `docs/privacy-policy.md`).
 
 ## Distribution
 
@@ -146,13 +149,14 @@ The extension currently runs load-unpacked with a pinned `key` in `extension/man
 
 **Support URL / Email** — (recommended: the project's GitHub Issues URL, or a support email)
 
-**Homepage URL** — (recommended: the project repository or landing page)
+**Homepage URL** — https://starfysh-tech.github.io/linktrail/ (landing page, GitHub Pages; also set as `homepage_url` in the manifest)
 
 ## Version History
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
 | 0.8.0 | 2026-06-25 | Initial submission: toolbar save, keyboard-shortcut save, private RSS reading history, first-run backend + write-token setup. | Draft |
+| 0.8.1 | 2026-06-25 | Add `homepage_url` (landing page); publish landing + privacy policy via GitHub Pages. | Draft |
 
 ## Review Notes
 

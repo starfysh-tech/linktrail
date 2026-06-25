@@ -8,6 +8,10 @@ Functions, and flow back out as an RSS feed you subscribe to in any reader. The
 extension is intentionally thin — vanilla HTML/CSS + TypeScript, no UI framework —
 with an Apple-native graphite-and-warm-amber "glass" look.
 
+**Links:** [Landing page](https://starfysh-tech.github.io/linktrail/) ·
+[Privacy policy](https://starfysh-tech.github.io/linktrail/privacy.html) ·
+[Web Store listing prep](CHROMEWEBSTORE.md)
+
 ## How it works
 
 The capture flow:

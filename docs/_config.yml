@@ -1,0 +1,10 @@
+# GitHub Pages (Jekyll legacy build) serves from main:/docs.
+# Publish ONLY the public site (index.html, privacy.html). The internal dev docs
+# that also live in /docs must NOT be published — exclude them from the build.
+title: Linktrail
+description: Flag a page in a keystroke; read it in your own RSS.
+exclude:
+  - prd-v1.md
+  - dev-setup.md
+  - privacy-policy.md
+  - issues

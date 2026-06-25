@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Linktrail — flag a page in a keystroke, read it in your own RSS</title>
+<meta name="description" content="Linktrail is a Chrome extension that captures the current tab into a personal, private, RSS-backed reading history. No accounts. Your data, your backend." />
+<style>
+  :root {
+    --grA: #45454b; --grB: #1b1b1f;
+    --on: #fff; --on-2: rgba(255,255,255,.82); --on-3: rgba(255,255,255,.56);
+    --glass: rgba(255,255,255,.08); --glass-2: rgba(255,255,255,.14); --line: rgba(255,255,255,.22);
+    --a1: #ffc062; --a2: #ff9f0a; --ink: #2a1c02;
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; font-family: var(--font); color: var(--on); -webkit-font-smoothing: antialiased;
+    background: radial-gradient(80% 50% at 15% -5%, rgba(255,244,230,.10), transparent 55%),
+                linear-gradient(168deg, var(--grA), var(--grB) 60%);
+    background-attachment: fixed; min-height: 100vh;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 22px; }
+  a { color: #ffd089; }
+
+  /* hero */
+  header.hero { padding: 72px 0 36px; display: grid; gap: 40px; grid-template-columns: 1.1fr 0.9fr; align-items: center; }
+  .brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 700; font-size: 15px; color: var(--on-2); margin-bottom: 22px; }
+  .brand svg { width: 20px; height: 20px; fill: var(--a2); }
+  h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.05; letter-spacing: -0.03em; margin: 0 0 16px; }
+  h1 .amber { color: #ffb84d; }
+  .lede { font-size: 17px; line-height: 1.5; color: var(--on-2); margin: 0 0 26px; max-width: 30ch; }
+  .cta { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; color: var(--ink);
+         background: linear-gradient(180deg, var(--a1), var(--a2)); padding: 12px 20px; border-radius: 12px; text-decoration: none;
+         box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 8px 22px -10px rgba(255,159,10,.7); }
+  .cta svg { width: 16px; height: 16px; fill: var(--ink); }
+  .sub-cta { display: block; margin-top: 12px; font-size: 13px; color: var(--on-3); }
+
+  /* hero popup mock */
+  .mock { width: 300px; margin-left: auto; border-radius: 18px; padding: 15px; display: flex; flex-direction: column; gap: 12px;
+          background: rgba(255,255,255,.06); border: .5px solid var(--line);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 24px 60px -18px rgba(0,0,0,.7); backdrop-filter: blur(12px); }
+  .mock .row { display: flex; align-items: center; gap: 11px; }
+  .mock .tile { width: 38px; height: 38px; border-radius: 10px; background: var(--glass-2); border: .5px solid var(--line);
+                display: grid; place-items: center; flex: 0 0 auto; }
+  .mock .tile svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 2; }
+  .mock .t { font-size: 13.5px; font-weight: 700; }
+  .mock .u { font-size: 12px; color: var(--on-2); }
+  .mock .save { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 11px; border-radius: 12px;
+                font-weight: 700; font-size: 14px; color: var(--ink); background: linear-gradient(180deg, var(--a1), var(--a2));
+                box-shadow: inset 0 1px 0 rgba(255,255,255,.5); }
+  .mock .save svg { width: 16px; height: 16px; fill: var(--ink); }
+  .mock .chips { display: flex; gap: 8px; }
+  .mock .chip { flex: 1; text-align: center; padding: 8px; border-radius: 10px; font-size: 12.5px; font-weight: 600;
+                background: var(--glass); border: .5px solid var(--line); }
+
+  /* sections */
+  section { padding: 30px 0; }
+  h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--on-3); margin: 0 0 20px; }
+  .steps { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
+  .card { background: var(--glass); border: .5px solid var(--line); border-radius: 16px; padding: 18px;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.14); }
+  .card .n { font-size: 12px; font-weight: 700; color: #ffb84d; }
+  .card h3 { font-size: 15px; margin: 8px 0 6px; letter-spacing: -.01em; }
+  .card p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--on-2); }
+  .kbd { display: inline-block; padding: 1px 7px; border-radius: 6px; background: var(--glass-2); border: .5px solid var(--line);
+         font-size: 12px; font-weight: 600; }
+  .feat { display: grid; gap: 14px; grid-template-columns: repeat(2, 1fr); }
+  .feat .card h3 { color: var(--on); }
+
+  footer { padding: 40px 0 60px; border-top: .5px solid var(--line); margin-top: 24px; color: var(--on-3); font-size: 13px;
+           display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  footer a { color: var(--on-2); }
+
+  @media (max-width: 760px) {
+    header.hero { grid-template-columns: 1fr; padding-top: 48px; }
+    .mock { margin: 0 auto; }
+    .steps, .feat { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div>
+      <span class="brand">
+        <svg viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></svg>
+        Linktrail
+      </span>
+      <h1>Flag a page in a keystroke.<br /><span class="amber">Read it in your own RSS.</span></h1>
+      <p class="lede">A Chrome extension that captures the current tab into a personal, private, RSS-backed reading history. No accounts. No inbox to babysit.</p>
+      <a class="cta" href="#how">
+        <svg viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></svg>
+        See how it works
+      </a>
+      <span class="sub-cta">Load-unpacked today · Chrome Web Store soon</span>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="row">
+        <span class="tile"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg></span>
+        <div style="min-width:0"><div class="t">Prompt caching — Claude API Docs</div><div class="u">platform.claude.com/docs/…</div></div>
+      </div>
+      <div class="save"><svg viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></svg> Save page</div>
+      <div class="chips"><div class="chip">Feed</div><div class="chip">Settings</div></div>
+    </div>
+  </header>
+
+  <section id="how">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="card"><div class="n">01</div><h3>Capture</h3><p>Press <span class="kbd">⌘⇧L</span> for a silent save, or click the toolbar icon for a glass popup that shows what you're keeping.</p></div>
+      <div class="card"><div class="n">02</div><h3>Store</h3><p>The page's URL and title go to a backend <em>you</em> own — your own serverless function and database. Duplicates and tracking junk are cleaned automatically.</p></div>
+      <div class="card"><div class="n">03</div><h3>Read</h3><p>Everything appears newest-first in a private RSS feed. Subscribe in the reader you already use — no separate app.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Why Linktrail</h2>
+    <div class="feat">
+      <div class="card"><h3>Private by design</h3><p>Your reading history lives in your own backend, reached with your own tokens. The feed URL carries an unguessable read token. Nobody operates a shared server.</p></div>
+      <div class="card"><h3>Near-zero friction</h3><p>One keystroke saves the page without interrupting your reading. A quiet badge confirms it; a duplicate is a calm "already saved," not an error.</p></div>
+      <div class="card"><h3>No accounts</h3><p>First-run setup is a backend URL and a write token. No sign-in, no sync service to manage.</p></div>
+      <div class="card"><h3>Works with your reader</h3><p>It's a standard RSS 2.0 feed — newest-first, linking to the original pages — so it works in any RSS reader.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    <span>© Linktrail · A personal reading-history utility.</span>
+    <span><a href="privacy.html">Privacy Policy</a></span>
+  </footer>
+</div>
+</body>
+</html>
