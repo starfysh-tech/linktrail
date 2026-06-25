@@ -1,49 +1,86 @@
 /**
- * MV3 service worker — Slice 1 flow: keyboard shortcut → silent save → minimal
- * badge feedback. The full six-state feedback (notifications, distinct 4xx/5xx
- * routing) is Slice 5; here we only need a success tick, a failure cross, and a
- * quiet skip for non-capturable pages.
+ * MV3 service worker — Slice 5 feedback & failure UX for the silent shortcut path.
+ *
+ * Three feedback tiers, all driven by the pure helpers in ./capture so the
+ * service worker holds no policy of its own:
+ *   - success/duplicate → badge only (✓), auto-clears after ~2s; never notifies.
+ *   - not-capturable     → quiet skip; neutral badge, no backend call, no notification.
+ *   - failure            → persistent ✗ badge + a single notification (config vs.
+ *                          temporary). A config failure's notification opens the
+ *                          options page on click. Failures never mutate storage.
  */
-import { isCapturable, buildPayload, mapResponseToState } from "./capture";
+import {
+  isCapturable,
+  buildPayload,
+  mapResponseToState,
+  badgeFor,
+  badgeAutoClears,
+  failureKind,
+  failureNotification,
+  type CaptureState,
+} from "./capture";
 
-// Apple accent green-ish / red for the two terminal states; neutral grey for skips.
-const COLOR_OK = "#34C759";
-const COLOR_FAIL = "#FF3B30";
-const COLOR_NEUTRAL = "#8E8E93";
 const BADGE_CLEAR_MS = 2000;
 
-function setBadge(text: string, color: string): void {
+// Notifications require an iconUrl; this 1×1 transparent PNG is a placeholder —
+// a real branded icon set is a later polish item (not part of Slice 5).
+const ICON =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+// Stable id so a repeated failure replaces the prior notification rather than stacking.
+const FAIL_NOTIF_ID = "linktrail-capture-failure";
+
+function applyBadge(state: CaptureState): void {
+  const { text, color } = badgeFor(state);
   chrome.action.setBadgeText({ text });
   chrome.action.setBadgeBackgroundColor({ color });
+  if (badgeAutoClears(state)) {
+    setTimeout(() => chrome.action.setBadgeText({ text: "" }), BADGE_CLEAR_MS);
+  }
 }
 
-function clearBadgeSoon(): void {
-  setTimeout(() => chrome.action.setBadgeText({ text: "" }), BADGE_CLEAR_MS);
+function notifyFailure(kind: ReturnType<typeof failureKind>): void {
+  const { title, message } = failureNotification(kind);
+  chrome.notifications.create(FAIL_NOTIF_ID, {
+    type: "basic",
+    iconUrl: ICON,
+    title,
+    message,
+  });
 }
+
+// A failure notification is actionable: clicking it routes to settings (the fix
+// for a config failure; harmless for a temporary one). Clear it on click.
+chrome.notifications.onClicked.addListener((notifId) => {
+  if (notifId !== FAIL_NOTIF_ID) return;
+  chrome.runtime.openOptionsPage();
+  chrome.notifications.clear(notifId);
+});
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== "capture-current-tab") return;
 
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-  // Browser-internal / non-web pages: skip the backend entirely with a quiet hint.
+  // Browser-internal / non-web pages: quiet skip — no backend, no notification.
   if (!isCapturable(tab?.url)) {
-    setBadge("—", COLOR_NEUTRAL);
-    clearBadgeSoon();
+    applyBadge("not-capturable");
     return;
   }
 
-  // Config is set manually in Slice 1 (no options UI yet). Missing config = fail.
+  // Missing config is a config-class failure: badge + notification, no state change.
   const { backendUrl, writeToken } = await chrome.storage.sync.get([
     "backendUrl",
     "writeToken",
   ]);
   if (!backendUrl || !writeToken) {
-    setBadge("✗", COLOR_FAIL);
-    clearBadgeSoon();
+    applyBadge("failed");
+    notifyFailure("config");
     return;
   }
 
+  let state: CaptureState;
+  let status = 0; // network/thrown errors are represented as status 0 (→ temporary).
   try {
     const res = await fetch(`${backendUrl}/api/save`, {
       method: "POST",
@@ -53,21 +90,18 @@ chrome.commands.onCommand.addListener(async (command) => {
       },
       body: JSON.stringify(buildPayload({ url: tab!.url!, title: tab!.title })),
     });
-
+    status = res.status;
     // Only read JSON on success; an error body may not be JSON.
     const outcome = res.ok ? (await res.json()).outcome : undefined;
-    const state = mapResponseToState(res.status, outcome);
-
-    if (state === "saved" || state === "duplicate") {
-      setBadge("✓", COLOR_OK);
-      clearBadgeSoon();
-    } else {
-      setBadge("✗", COLOR_FAIL);
-      clearBadgeSoon();
-    }
+    state = mapResponseToState(res.status, outcome);
   } catch {
-    // Network failure (offline, DNS, etc.) — same terminal failure badge.
-    setBadge("✗", COLOR_FAIL);
-    clearBadgeSoon();
+    state = "failed";
+  }
+
+  applyBadge(state);
+
+  // Success/duplicate are badge-only. Only a failure notifies.
+  if (state === "failed") {
+    notifyFailure(failureKind(status));
   }
 });

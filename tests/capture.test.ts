@@ -5,6 +5,11 @@ import {
   mapResponseToState,
   previewUrl,
   resultText,
+  failureKind,
+  failureText,
+  badgeFor,
+  badgeAutoClears,
+  failureNotification,
 } from "../extension/src/capture";
 
 describe("isCapturable", () => {
@@ -81,5 +86,44 @@ describe("resultText", () => {
     expect(resultText("duplicate")).toBe("Already saved");
     expect(resultText("not-capturable")).toBe("Can’t save this page");
     expect(resultText("failed")).not.toBe("");
+  });
+});
+
+describe("failureKind / failureText", () => {
+  it("classifies 4xx as config and 5xx/network as temporary", () => {
+    expect(failureKind(401)).toBe("config");
+    expect(failureKind(404)).toBe("config");
+    expect(failureKind(500)).toBe("temporary");
+    expect(failureKind(503)).toBe("temporary");
+    expect(failureKind(0)).toBe("temporary"); // network error sentinel
+  });
+
+  it("routes config failures to settings and temporary failures to retry", () => {
+    expect(failureText("config")).toBe("Check settings");
+    expect(failureText("temporary")).toContain("try again");
+  });
+});
+
+describe("badgeFor / badgeAutoClears", () => {
+  it("gives a tick for success/duplicate, cross for failed, dash for not-capturable", () => {
+    expect(badgeFor("saved").text).toBe("✓");
+    expect(badgeFor("duplicate").text).toBe("✓");
+    expect(badgeFor("failed").text).toBe("✗");
+    expect(badgeFor("not-capturable").text).toBe("—");
+    expect(badgeFor("ready").text).toBe("");
+  });
+
+  it("auto-clears success/duplicate/not-capturable but persists failures", () => {
+    expect(badgeAutoClears("saved")).toBe(true);
+    expect(badgeAutoClears("duplicate")).toBe(true);
+    expect(badgeAutoClears("not-capturable")).toBe(true);
+    expect(badgeAutoClears("failed")).toBe(false);
+  });
+});
+
+describe("failureNotification", () => {
+  it("only differs by kind and steers config failures toward settings", () => {
+    expect(failureNotification("config").title.toLowerCase()).toContain("settings");
+    expect(failureNotification("temporary").message.toLowerCase()).toContain("retry");
   });
 });

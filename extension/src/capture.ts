@@ -66,6 +66,68 @@ export function previewUrl(rawUrl: string): string {
   }
 }
 
+/**
+ * Failure taxonomy: a config/auth problem (4xx) is fixed in settings; a
+ * temporary problem (5xx or a network error, represented as status 0) is fixed
+ * by simply triggering capture again. This split drives both the user-facing
+ * message and the notification's click action.
+ */
+export type FailureKind = "config" | "temporary";
+
+export function failureKind(status: number): FailureKind {
+  return status >= 400 && status < 500 ? "config" : "temporary";
+}
+
+/** Result-strip text for a failed save, by kind. */
+export function failureText(kind: FailureKind): string {
+  return kind === "config" ? "Check settings" : "Couldn’t save — try again";
+}
+
+/**
+ * Toolbar badge for a state: text + color. Empty text means "clear the badge".
+ * Shared by the service worker (shortcut path) and any other surface.
+ */
+export function badgeFor(state: CaptureState): { text: string; color: string } {
+  switch (state) {
+    case "saved":
+    case "duplicate":
+      return { text: "✓", color: "#34C759" };
+    case "failed":
+      return { text: "✗", color: "#FF3B30" };
+    case "not-capturable":
+      return { text: "—", color: "#8E8E93" };
+    case "ready":
+    case "saving":
+      return { text: "", color: "#8E8E93" };
+  }
+}
+
+/**
+ * Whether a state's badge should auto-clear after ~2s. Success/duplicate and the
+ * quiet not-capturable hint clear themselves; a failure persists so the user
+ * notices it (cleared on the next capture attempt).
+ */
+export function badgeAutoClears(state: CaptureState): boolean {
+  return state === "saved" || state === "duplicate" || state === "not-capturable";
+}
+
+/**
+ * The notification to raise for a failure (failures are the ONLY outcome that
+ * notifies — success/duplicate stay badge-only). A `config` failure routes the
+ * user to settings; a `temporary` one tells them to retry.
+ */
+export function failureNotification(kind: FailureKind): { title: string; message: string } {
+  return kind === "config"
+    ? {
+        title: "Linktrail — check settings",
+        message: "Your backend URL or write token needs attention.",
+      }
+    : {
+        title: "Linktrail — couldn’t save",
+        message: "A temporary problem. Trigger capture again to retry.",
+      };
+}
+
 /** Result-strip / status-pill text for each capture state. */
 export function resultText(state: CaptureState): string {
   switch (state) {

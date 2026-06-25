@@ -15,6 +15,8 @@ import {
   mapResponseToState,
   previewUrl,
   resultText,
+  failureKind,
+  failureText,
   type CaptureState,
 } from "./capture";
 import type { SaveResponse } from "../../lib/contract";
@@ -33,10 +35,19 @@ const els = {
   openSettings: $("open-settings"),
 };
 
-/** Single source of truth for visible state: body class drives CSS, strip shows text. */
-function render(state: CaptureState): void {
+/**
+ * Single source of truth for visible state: body class drives CSS, strip shows text.
+ *
+ * `status` only matters for "failed": it splits the generic failure message into a
+ * config-vs-temporary read (4xx -> "Check settings", 5xx/network(0) -> retry). The
+ * config-failure fix route is the existing #open-settings link — no extra UI here.
+ */
+function render(state: CaptureState, status = 0): void {
   document.body.className = `state-${state}`;
-  if (els.resultStrip) els.resultStrip.textContent = resultText(state);
+  if (els.resultStrip) {
+    els.resultStrip.textContent =
+      state === "failed" ? failureText(failureKind(status)) : resultText(state);
+  }
 }
 
 async function init(): Promise<void> {
@@ -72,13 +83,14 @@ async function init(): Promise<void> {
 async function save(tab: chrome.tabs.Tab): Promise<void> {
   render("saving");
 
-  // Slice 5 refines config routing; here a missing backend URL / token is just a failure.
+  // A missing backend URL / token is a config problem: route it through the 4xx
+  // branch (-> "Check settings") so the fix is the #open-settings link.
   const { backendUrl, writeToken } = await chrome.storage.sync.get([
     "backendUrl",
     "writeToken",
   ]);
   if (!backendUrl || !writeToken) {
-    render("failed");
+    render("failed", 401);
     return;
   }
 
@@ -92,10 +104,12 @@ async function save(tab: chrome.tabs.Tab): Promise<void> {
       body: JSON.stringify(buildPayload({ url: tab.url!, title: tab.title })),
     });
     const outcome = res.ok ? ((await res.json()) as SaveResponse).outcome : undefined;
-    render(mapResponseToState(res.status, outcome));
+    const state = mapResponseToState(res.status, outcome);
+    render(state, res.status);
   } catch {
     // Network error (offline, DNS, CORS) — distinct from an HTTP error status.
-    render("failed");
+    // Status 0 reads as temporary -> "Couldn’t save — try again".
+    render("failed", 0);
   }
 }
 
