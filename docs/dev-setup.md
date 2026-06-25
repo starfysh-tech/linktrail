@@ -69,3 +69,34 @@ bun run build:ext               # builds to dist/extension/
    backend call).
 5. Subscribe your RSS reader to `https://<deployment>/api/feed?token=<READ_TOKEN>`
    and confirm the page appears, newest-first, linking to the original URL.
+
+## Package for distribution
+
+```sh
+bun run package   # builds + zips to dist/linktrail-<version>.zip
+```
+
+The zip has `manifest.json` at its root and only built files (no source / `.git` /
+env). Upload it to the Chrome Web Store (see `CHROMEWEBSTORE.md`) or share it for
+load-unpacked.
+
+## Verify v1 (full functional pass)
+
+From Slice 3 on, configure via the **options page** rather than the console seed
+above: open the extension's options → backend URL + write token → **Test
+connection** (expect "Connected." + your feed link) → **Save**.
+
+- [ ] Shortcut on a normal page → **✓** badge, clears ~2s; page appears in the feed.
+- [ ] Toolbar click → glass popup (favicon tile, title, cleaned URL); **Save page**
+      → pill shows "Saved".
+- [ ] Re-save the same page → pill "Already saved" (duplicate); no second feed item.
+- [ ] `chrome://` / new-tab → popup "Can't save this page"; shortcut shows quiet **—**.
+- [ ] Bad token → Test connection shows an actionable error; a failed save shows
+      **✗** + a "Check settings" notification that opens options.
+- [ ] Offline / 5xx → "Couldn't save — try again"; re-triggering capture retries.
+- [ ] Popup + options render correctly (graphite + amber) in light and dark.
+- [ ] Feed in a real RSS reader: newest-first, original-URL links, sensible titles.
+
+> **Shortcut note:** the default is **⌘⇧L** (mac) / **Ctrl+Shift+L**. Avoid plain
+> ⌘L — that's Chrome's address-bar focus. If Chrome didn't auto-bind it, set it at
+> `chrome://extensions/shortcuts`.

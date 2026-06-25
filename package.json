@@ -9,7 +9,8 @@
     "migrate": "bun run scripts/migrate.ts",
     "reset": "bun run scripts/reset-items.ts",
     "build:ext": "vite build --config extension/vite.config.ts",
-    "dev:ext": "vite --config extension/vite.config.ts"
+    "dev:ext": "vite --config extension/vite.config.ts",
+    "package": "bun run scripts/package.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4"

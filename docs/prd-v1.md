@@ -242,6 +242,15 @@ single source of truth; RSS is a generated read view.
   cards — not on backgrounds, list rows, or text-heavy surfaces.
 - **Light and dark mode parity is mandatory.**
 
+> **Design revision (v0.7+):** the popup and options surfaces were reworked into a
+> single **graphite material with one warm amber accent** (systemOrange-family,
+> P3) — a deliberate branded dark surface (à la Apple's Now Playing widget) shown
+> in *both* light and dark, with glass applied to the UI elements (favicon tile,
+> chips, status pill) over the color. This supersedes the "single blue accent +
+> light/dark parity" direction above for these two surfaces. Rationale: a Chrome
+> popup is an opaque box that can't reveal the page behind it, so the surface owns
+> its own color and the glass enhances the controls rather than faking page-glass.
+
 ### Distribution
 - **Load unpacked** (developer mode) for v1, with a **pinned manifest `key`** so
   the extension ID stays stable across reloads (so `chrome.storage.sync` data and
