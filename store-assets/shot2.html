@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><style>
+  :root{--grA:#45454b;--grB:#1b1b1f;--on:#fff;--on2:rgba(255,255,255,.82);--on3:rgba(255,255,255,.56);
+    --glass:rgba(255,255,255,.08);--glass2:rgba(255,255,255,.14);--line:rgba(255,255,255,.22);--field:rgba(255,255,255,.06);
+    --a1:#ffc062;--a2:#ff9f0a;--ink:#2a1c02;--f:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,sans-serif;}
+  *{box-sizing:border-box;} html,body{margin:0;width:1280px;height:800px;overflow:hidden;}
+  body{font-family:var(--f);color:var(--on);-webkit-font-smoothing:antialiased;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:32px;padding:0 96px;
+    background:radial-gradient(70% 60% at 88% -8%,rgba(255,244,230,.12),transparent 55%),linear-gradient(168deg,var(--grA),var(--grB) 62%);}
+  .brand{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:20px;color:var(--on2);margin-bottom:26px;}
+  .brand svg{width:26px;height:26px;fill:var(--a2);}
+  h1{font-size:52px;line-height:1.05;letter-spacing:-.03em;margin:0 0 20px;}
+  h1 .am{color:#ffb84d;}
+  p{font-size:21px;line-height:1.5;color:var(--on2);margin:0;max-width:22ch;}
+  /* options card */
+  .opt{width:460px;border-radius:20px;padding:26px;background:rgba(255,255,255,.07);border:.5px solid var(--line);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 40px 90px -30px rgba(0,0,0,.8);backdrop-filter:blur(18px);}
+  h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--on3);margin:0 0 16px;}
+  label{display:block;margin-bottom:16px;}
+  label span{display:block;font-weight:600;color:var(--on2);margin-bottom:6px;font-size:14px;}
+  .inp{width:100%;padding:12px 13px;border-radius:11px;background:var(--field);border:.5px solid var(--line);color:var(--on);font:inherit;font-size:14px;}
+  .inp.ph{color:var(--on3);}
+  .acts{display:flex;gap:10px;margin-top:2px;}
+  .primary{padding:11px 18px;border-radius:11px;font-weight:700;font-size:14px;color:var(--ink);background:linear-gradient(180deg,var(--a1),var(--a2));border:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.5);}
+  .ghost{padding:11px 18px;border-radius:11px;font-weight:600;font-size:14px;color:var(--on);background:var(--glass);border:.5px solid var(--line);backdrop-filter:blur(10px);}
+  .ok{margin-top:16px;font-size:14px;font-weight:600;color:#5fe39a;}
+</style></head><body>
+  <div>
+    <span class="brand"><svg viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></svg> Linktrail</span>
+    <h1>Your data, <span class="am">your backend.</span></h1>
+    <p>Set a backend URL and a write token. No account, no sign-in — test the connection and you're done.</p>
+  </div>
+  <div class="opt">
+    <h2>Connection</h2>
+    <label><span>Backend URL</span><div class="inp">https://linktrail-alpha.vercel.app</div></label>
+    <label><span>Write token</span><div class="inp">••••••••••••••••••••••••••••</div></label>
+    <div class="acts"><button class="primary">Save</button><button class="ghost">Test connection</button></div>
+    <div class="ok">✓ Connected. Your feed is ready.</div>
+  </div>
+</body></html>

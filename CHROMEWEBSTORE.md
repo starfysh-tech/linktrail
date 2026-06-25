@@ -46,7 +46,7 @@ PERMISSIONS
 SUPPORT
 Questions, bugs, or suggestions? Open an issue on the project's GitHub repository or email the address on this listing.
 
-Version 0.8.0 — Initial release: toolbar save, keyboard-shortcut save, and private RSS reading history.
+Version 0.8.1 — Initial release: toolbar save, keyboard-shortcut save, and private RSS reading history.
 
 **Category**
 
@@ -64,22 +64,24 @@ English
 
 | Asset | Dimensions | Status | Filename |
 |-------|-----------|--------|----------|
-| Store Icon [REQUIRED] | 128×128 PNG | ⬜ Not created | (reuse `extension/icons/128.png` or a store-optimized variant) |
-| Screenshot 1 [REQUIRED] | 1280×800 | ⬜ Not created | |
-| Screenshot 2 [RECOMMENDED] | 1280×800 | ⬜ Not created | |
-| Screenshot 3 [RECOMMENDED] | 1280×800 | ⬜ Not created | |
-| Screenshot 4 | 1280×800 | ⬜ Not created | |
-| Small Promo Tile [RECOMMENDED] | 440×280 | ⬜ Not created | |
-| Marquee Promo Tile | 1400×560 | ⬜ Not created | |
+| Store Icon [REQUIRED] | 128×128 PNG | ✅ Ready | `extension/icons/128.png` |
+| Screenshot 1 [REQUIRED] | 1280×800 | ✅ Created | `store-assets/screenshot-1.png` (Capture) |
+| Screenshot 2 [RECOMMENDED] | 1280×800 | ✅ Created | `store-assets/screenshot-2.png` (Setup) |
+| Screenshot 3 [RECOMMENDED] | 1280×800 | ✅ Created | `store-assets/screenshot-3.png` (Read) |
+| Small Promo Tile [RECOMMENDED] | 440×280 | ✅ Created | `store-assets/promo-small-440x280.png` |
+| Marquee Promo Tile | 1400×560 | ⬜ Optional | (only needed if featured) |
 
 ### Screenshot Notes
 
-Capture all screenshots at 1280×800 (the larger of the two allowed sizes; more readable in the carousel). Use both light and dark mode so reviewers and users see the system-appearance parity.
+The three required/recommended screenshots are generated at exactly 1280×800 and
+live in `store-assets/` (regenerate with the `store-assets/shot*.html` sources via
+headless Chrome). They use the extension's single graphite + warm-amber glass
+theme (the popup/options are intentionally graphite in both light and dark, so
+there are no separate light/dark shots).
 
-1. **Popup — ready to save** (light mode): the toolbar popup open over a real article, showing the page title and the Save button. This is the primary "what you do" shot.
-2. **Popup — saved confirmation** (dark mode): the popup or toolbar badge right after a successful save, demonstrating the silent-confirm behavior and dark-mode parity.
-3. **Options page — first-run setup**: the options page showing the backend-address and write-token fields, demonstrating "no account, you own the backend." Use placeholder/redacted values — never show a real token.
-4. **The feed in an RSS reader**: saved pages newest-first in a generic RSS reader, showing the end payoff. Avoid third-party brand logos/trademarks in the frame where possible.
+1. **`screenshot-1.png` — Capture**: the toolbar popup (favicon tile, page title, amber Save, Feed/Settings chips) beside "Flag a page in a keystroke." The primary "what you do" shot.
+2. **`screenshot-2.png` — Setup**: the options Connection card (backend URL + write token, redacted; Save + Test connection; "Connected.") beside "Your data, your backend." No real token shown.
+3. **`screenshot-3.png` — Read**: a generic RSS-reader view of saved pages newest-first beside "Read it in your own RSS." No third-party brand logos.
 
 ## Permissions Justification
 
@@ -163,39 +165,39 @@ The extension currently runs load-unpacked with a pinned `key` in `extension/man
 ### Pre-Publish Checklist (tailored to Linktrail)
 
 Manifest & package
-- [ ] `manifest_version` is 3. (Confirmed in `extension/manifest.config.ts`.)
-- [ ] Version bumped vs. any prior published version (currently 0.8.0).
-- [ ] Manifest `name` is exactly "Linktrail" and matches this listing.
-- [ ] Manifest `description` ("Capture the current tab into a personal RSS reading history.") is ≤ 132 chars and consistent with the short description above.
-- [ ] Decide on the manifest `key` for the store build (see "Note on the manifest key / extension ID").
-- [ ] Built ZIP excludes dev files: `node_modules/`, `.git/`, `.env.local`, source maps, `vite.config.*`, `tsconfig.json`, `package*.json`, `CHROMEWEBSTORE.md`, `README.md`, `docs/`, tests. Ship only the built extension output.
+- [x] `manifest_version` is 3. (Confirmed in `extension/manifest.config.ts`.)
+- [x] Version bumped vs. any prior published version (currently **0.8.1**).
+- [x] Manifest `name` is exactly "Linktrail" and matches this listing.
+- [x] Manifest `description` ("Capture the current tab into a personal RSS reading history.") is ≤ 132 chars and consistent with the short description above.
+- [ ] Decide on the manifest `key` for the store build (see "Note on the manifest key / extension ID"). ← your call.
+- [x] Built ZIP excludes dev files. `bun run package` zips ONLY `dist/extension` → `dist/linktrail-0.8.1.zip` (no source, `.git`, env, docs, or `CHROMEWEBSTORE.md`).
 
 Permissions
-- [ ] Manifest requests exactly `["activeTab","storage","notifications"]` — no extras, no `host_permissions`, no `<all_urls>`.
-- [ ] Each permission's dashboard justification is filled in from the Permissions Justification table above (plain-English, feature-specific).
+- [x] Manifest requests exactly `["activeTab","storage","notifications"]` — no extras, no `host_permissions`, no `<all_urls>`.
+- [x] Each permission's dashboard justification is filled in from the Permissions Justification table above (plain-English, feature-specific).
 
 Listing content
-- [ ] Single purpose is the one-sentence statement above (narrow, no marketing language).
-- [ ] Detailed description names no implementation details (no Vite, Neon, Vercel internals, Chrome API names) beyond "you connect your own backend."
-- [ ] No misleading claims; every listed feature actually works in the build you upload.
-- [ ] Contact email is valid and monitored.
+- [x] Single purpose is the one-sentence statement above (narrow, no marketing language).
+- [x] Detailed description names no implementation details beyond "you connect your own backend."
+- [x] No misleading claims; every listed feature works in the build you upload (functional pass complete).
+- [ ] Contact email is valid and monitored. ← fill in your address.
 
 Privacy & compliance
-- [ ] Data disclosure form matches the Privacy & Data Use table above (web history = URL/title of saved pages; sent only to the user's backend; no publisher collection; no sale/sharing).
-- [ ] `chrome.storage.sync` use is disclosed as off-device transmission (config roams via Google's sync servers).
-- [ ] Privacy policy URL is live, public, no login wall, and matches the disclosure.
-- [ ] No remotely hosted code; all JS is bundled (MV3-enforced — verify the build loads no runtime CDN scripts).
-- [ ] Output is minified, not obfuscated.
+- [x] Data disclosure form matches the Privacy & Data Use table above.
+- [x] `chrome.storage.sync` use is disclosed as off-device transmission.
+- [x] Privacy policy URL is live, public, no login wall, and matches the disclosure. (https://starfysh-tech.github.io/linktrail/privacy.html → HTTP 200.)
+- [x] No remotely hosted code; all JS is bundled (MV3; Vite build, no runtime CDN scripts).
+- [x] Output is minified, not obfuscated (Vite production build).
 
-Functionality
-- [ ] Load the built (not just source) extension unpacked; confirm popup opens, Save works, the keyboard shortcut saves with a badge, and the options page saves config.
-- [ ] Verify the failure notification fires when the backend is unreachable (so the notifications permission is demonstrably exercised).
-- [ ] Confirm graceful behavior on restricted pages (e.g., `chrome://` URLs) — no crash.
-- [ ] Confirm a saved page actually appears newest-first in the feed.
+Functionality (manual pass complete)
+- [x] Built extension loads unpacked; popup opens, Save works, the keyboard shortcut saves with a badge, options saves config.
+- [x] Failure notification fires when the backend is unreachable.
+- [x] Graceful on restricted pages (`chrome://`) — quiet "Can't save this page", no crash.
+- [x] A saved page appears newest-first in the feed.
 
 Graphics
-- [ ] 128×128 store icon ready.
-- [ ] At least one 1280×800 screenshot showing the extension in action (see Screenshot Notes); screenshots match the current UI; no real tokens visible.
+- [x] 128×128 store icon ready (`extension/icons/128.png`).
+- [x] 1280×800 screenshots created (`store-assets/screenshot-1..3.png`) + a 440×280 promo tile; match the current UI; no real tokens visible.
 
 ### Known Issues / Limitations
 - v1 is single-user / personal — no multi-user support, no accounts, no sign-in. The listing and single-purpose statement are scoped accordingly.

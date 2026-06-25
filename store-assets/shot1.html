@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><style>
+  :root{--grA:#45454b;--grB:#1b1b1f;--on:#fff;--on2:rgba(255,255,255,.82);--on3:rgba(255,255,255,.56);
+    --glass:rgba(255,255,255,.08);--glass2:rgba(255,255,255,.16);--line:rgba(255,255,255,.24);
+    --a1:#ffc062;--a2:#ff9f0a;--ink:#2a1c02;--f:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,sans-serif;}
+  *{box-sizing:border-box;} html,body{margin:0;width:1280px;height:800px;overflow:hidden;}
+  body{font-family:var(--f);color:var(--on);-webkit-font-smoothing:antialiased;display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:40px;padding:0 96px;
+    background:radial-gradient(70% 60% at 12% -8%,rgba(255,244,230,.12),transparent 55%),linear-gradient(168deg,var(--grA),var(--grB) 62%);}
+  .brand{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:20px;color:var(--on2);margin-bottom:28px;}
+  .brand svg{width:26px;height:26px;fill:var(--a2);}
+  h1{font-size:58px;line-height:1.04;letter-spacing:-.03em;margin:0 0 22px;}
+  h1 .am{color:#ffb84d;}
+  p{font-size:22px;line-height:1.5;color:var(--on2);margin:0 0 26px;max-width:20ch;}
+  .kbd{display:inline-flex;gap:8px;align-items:center;font-size:16px;color:var(--on2);}
+  .kbd b{font-weight:700;padding:6px 12px;border-radius:9px;background:var(--glass2);border:.5px solid var(--line);font-size:17px;}
+  /* popup */
+  .pop{width:380px;margin-left:auto;border-radius:24px;padding:19px;display:flex;flex-direction:column;gap:15px;
+    background:rgba(255,255,255,.06);border:.5px solid var(--line);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.24),0 40px 90px -30px rgba(0,0,0,.8);backdrop-filter:blur(14px);}
+  .row{display:flex;align-items:center;gap:14px;}
+  .tile{width:48px;height:48px;border-radius:13px;background:var(--glass2);border:.5px solid var(--line);display:grid;place-items:center;flex:0 0 auto;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.5);}
+  .tile svg{width:25px;height:25px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .t{font-size:17px;font-weight:700;letter-spacing:-.01em;line-height:1.25;}
+  .u{font-size:14.5px;color:var(--on2);margin-top:3px;}
+  .save{display:flex;align-items:center;justify-content:center;gap:9px;padding:14px;border-radius:15px;font-weight:700;font-size:17px;color:var(--ink);
+    background:linear-gradient(180deg,var(--a1),var(--a2));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 8px 22px -10px rgba(255,159,10,.7);}
+  .save svg{width:18px;height:18px;fill:var(--ink);}
+  .chips{display:flex;gap:10px;}
+  .chip{flex:1;text-align:center;padding:11px;border-radius:12px;font-size:14.5px;font-weight:600;background:var(--glass);border:.5px solid var(--line);}
+  .brandrow{display:flex;justify-content:center;font-size:13px;color:var(--on3);gap:5px;align-items:center;}
+  .brandrow svg{width:13px;height:13px;fill:currentColor;}
+</style></head><body>
+  <div>
+    <span class="brand"><svg viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></svg> Linktrail</span>
+    <h1>Flag a page in a <span class="am">keystroke.</span></h1>
+    <p>Save the current tab to your private reading history — instantly.</p>
+    <span class="kbd"><b>⌘</b><b>⇧</b><b>L</b> &nbsp;or click the toolbar icon</span>
+  </div>
+  <div class="pop">
+    <div class="row"><span class="tile"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/></svg></span>
+      <div><div class="t">Prompt caching — Claude API Docs</div><div class="u">platform.claude.com/docs/…</div></div></div>
+    <div class="save"><svg viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></svg> Save page</div>
+    <div class="chips"><div class="chip">Feed</div><div class="chip">Settings</div></div>
+    <div class="brandrow"><svg viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></svg> Linktrail</div>
+  </div>
+</body></html>
