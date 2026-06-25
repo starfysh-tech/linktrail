@@ -32,6 +32,45 @@ export function verifyResultMessage(
   };
 }
 
+/**
+ * Build the host match pattern to request runtime access for a backend origin,
+ * or null if the URL isn't a usable http(s) backend.
+ *
+ * Granting this lets the extension's fetches reach a backend that does NOT send
+ * permissive CORS (a self-hosted one). The default Vercel backend already sends
+ * `ACAO: *`, so this is purely additive — denial falls back to that CORS path.
+ *
+ * The port is dropped on purpose: Chrome match-pattern hosts can't carry a port,
+ * and a host pattern matches every port — so `http://localhost:3000` becomes
+ * `http://localhost/*`, which still covers the dev backend.
+ */
+export function originPatternFor(backendUrl: string): string | null {
+  try {
+    const { protocol, hostname } = new URL(backendUrl);
+    if (protocol !== "http:" && protocol !== "https:") return null;
+    return `${protocol}//${hostname}/*`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Request host access for the backend so CORS-less self-hosted backends work.
+ * Called first in the click handlers (before other awaits) so the user gesture
+ * is still fresh for `permissions.request`. Idempotent: an already-granted origin
+ * resolves without a prompt. Failures (pattern not declared, gesture lost) are
+ * swallowed — the backend-CORS path still works.
+ */
+async function ensureHostPermission(backendUrl: string): Promise<void> {
+  const pattern = originPatternFor(backendUrl);
+  if (!pattern) return;
+  try {
+    await chrome.permissions.request({ origins: [pattern] });
+  } catch {
+    // Not in optional_host_permissions / gesture expired — fall back to CORS.
+  }
+}
+
 function $<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
   if (!el) throw new Error(`Missing element #${id}`);
@@ -71,6 +110,8 @@ async function loadShortcut(): Promise<void> {
 async function handleSave(): Promise<void> {
   const backendUrl = $<HTMLInputElement>("backend-url").value.trim();
   const writeToken = $<HTMLInputElement>("write-token").value.trim();
+  // Request host access first, while the click gesture is still fresh.
+  await ensureHostPermission(backendUrl);
   await chrome.storage.sync.set({ backendUrl, writeToken });
   showResult("Saved.", true);
 }
@@ -78,6 +119,10 @@ async function handleSave(): Promise<void> {
 async function handleTest(): Promise<void> {
   const backendUrl = $<HTMLInputElement>("backend-url").value.trim();
   const writeToken = $<HTMLInputElement>("write-token").value.trim();
+
+  // Request host access first (gesture-fresh) so the verify fetch below can reach
+  // a CORS-less backend; harmless when the backend already sends CORS.
+  await ensureHostPermission(backendUrl);
 
   let status = 0;
   let body: VerifyResponse | null = null;

@@ -95,7 +95,9 @@ there are no separate light/dark shots).
 | notifications | permissions | Shows a brief notification when a save needs the user's attention (e.g. a misconfiguration), is queued because the backend was unreachable, or when previously-queued pages finish syncing. Never used for marketing, promotions, or recurring alerts. |
 | alarms | permissions | Schedules a periodic background retry of saves that were queued while the user was offline or the backend was briefly unreachable, so a flagged page eventually reaches the user's trail without manual action. Used only for this retry timer — no tracking or scheduled content. |
 
-> No `host_permissions` are requested. Linktrail reaches the user's backend with ordinary network requests; the user's backend is responsible for allowing cross-origin requests (permissive CORS), so no host access needs to be granted to the extension.
+| optional_host_permissions | optional host | Declared broad (`https://*/*`, `http://localhost/*`) but NEVER granted at install. At runtime, from the options page, the extension requests access to ONLY the single backend origin the user typed in — so it can reach a self-hosted backend that doesn't send permissive CORS. The default backend already sends CORS, so this is additive; if the user denies it, saving still works via CORS. No broad host access is ever exercised. |
+
+> No host access is granted at install. `optional_host_permissions` is declared broad only because the backend origin is user-supplied and unknown at build time; the actual runtime grant is narrowed to the one origin the user enters in settings. The user's backend remains free to send permissive CORS (the default Vercel backend does), in which case no grant is needed.
 
 ## Privacy & Data Use
 
@@ -183,6 +185,7 @@ and published builds.
 | 0.8.1 | 2026-06-25 | Add `homepage_url` (landing page); publish landing + privacy policy via GitHub Pages. | Draft |
 | 0.9.0 | 2026-06-25 | Popup "already saved on open" hint + `GET /api/status` endpoint. | Draft |
 | 0.10.0 | 2026-06-25 | Offline retry queue: temporary failures are parked in `chrome.storage.local` and auto-retried (new `alarms` permission). | Draft |
+| 0.11.0 | 2026-06-25 | Optional host access requested at runtime for the user's backend origin, so CORS-less self-hosted backends work (additive; CORS fallback retained). | Draft |
 
 ## Review Notes
 
@@ -197,7 +200,7 @@ Manifest & package
 - [x] Built ZIP excludes dev files. `bun run package` zips ONLY `dist/extension` → `dist/linktrail-0.8.1.zip` (no source, `.git`, env, docs, or `CHROMEWEBSTORE.md`).
 
 Permissions
-- [x] Manifest requests exactly `["activeTab","storage","notifications","alarms"]` — no extras, no `host_permissions`, no `<all_urls>`.
+- [x] Manifest requests exactly `["activeTab","storage","notifications","alarms"]` at install — no install-time `host_permissions`, no `<all_urls>`. `optional_host_permissions` (`https://*/*`, `http://localhost/*`) is requested at runtime, narrowed to the single user-entered backend origin.
 - [x] Each permission's dashboard justification is filled in from the Permissions Justification table above (plain-English, feature-specific).
 
 Listing content
