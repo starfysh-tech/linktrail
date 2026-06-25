@@ -139,9 +139,16 @@ before submitting. Source of truth: `docs/privacy.html` (and `docs/privacy-polic
 
 ### Note on the manifest `key` / extension ID
 
-The extension currently runs load-unpacked with a pinned `key` in `extension/manifest.config.ts`, which fixes a stable extension ID during development. When you upload to the Chrome Web Store:
-- The store assigns/expects its own public key and will derive the published extension ID from it. The dev `key` you pinned will generally NOT match the store-assigned ID.
-- Decide deliberately: either keep the dev `key` so the unpacked dev build and the store build can be made to share an ID, or remove it and let the store own the identity. Whichever you choose, confirm the resulting extension ID is the one your backend's write/read tokens are scoped to, so saved-history identity does not silently change between dev and published builds.
+The extension pins a `key` in `extension/manifest.config.ts` so load-unpacked dev
+has a stable extension ID. **The Chrome Web Store rejects an uploaded manifest
+that contains `key`** ("key field is not allowed"), so `bun run package` strips
+it from the zip automatically — the local `dist/extension` keeps `key` (stable
+dev ID), the uploaded zip does not, and the store assigns the published ID.
+
+This means the published extension ID differs from the dev (keyed) ID — which is
+fine here: the backend write/read tokens are user-supplied configuration, not
+scoped to the extension ID, so saved-history identity does not change between dev
+and published builds.
 
 ## Developer Info
 
@@ -169,7 +176,7 @@ Manifest & package
 - [x] Version bumped vs. any prior published version (currently **0.8.1**).
 - [x] Manifest `name` is exactly "Linktrail" and matches this listing.
 - [x] Manifest `description` ("Capture the current tab into a personal RSS reading history.") is ≤ 132 chars and consistent with the short description above.
-- [ ] Decide on the manifest `key` for the store build (see "Note on the manifest key / extension ID"). ← your call.
+- [x] Manifest `key` handled: `bun run package` strips `key` from the zip (the store rejects it); dev load-unpacked keeps it. Published ID is store-assigned (backend tokens aren't ID-scoped, so nothing breaks).
 - [x] Built ZIP excludes dev files. `bun run package` zips ONLY `dist/extension` → `dist/linktrail-0.8.1.zip` (no source, `.git`, env, docs, or `CHROMEWEBSTORE.md`).
 
 Permissions
