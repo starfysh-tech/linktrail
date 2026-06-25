@@ -12,22 +12,36 @@
   <body class="state-ready">
     <main class="popup">
       <section class="page-card">
-        <img id="favicon" class="favicon" src="" alt="" />
+        <span class="favicon-tile">
+          <img id="favicon" class="favicon" src="" alt="" />
+        </span>
         <div class="page-meta">
           <p id="title" class="title"></p>
           <p id="url-preview" class="url-preview"></p>
         </div>
       </section>
 
-      <button id="save-btn" type="button" class="save-btn">Save</button>
+      <button id="save-btn" type="button" class="save-btn">
+        <svg class="save-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z" />
+        </svg>
+        <span class="save-label">Save page</span>
+      </button>
 
       <!-- Text set by the controller; visibility/colour driven by body state. -->
       <div id="result-strip" class="result-strip" role="status" aria-live="polite"></div>
 
-      <footer class="footer">
-        <button id="open-feed" type="button" class="link">Feed</button>
-        <button id="open-settings" type="button" class="link">Settings</button>
-      </footer>
+      <div class="chips">
+        <button id="open-feed" type="button" class="chip">Feed</button>
+        <button id="open-settings" type="button" class="chip">Settings</button>
+      </div>
+
+      <div class="brand-row">
+        <span class="brand">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z" /></svg>
+          Linktrail
+        </span>
+      </div>
     </main>
 
     <script type="module" src="src/popup.ts"></script>
