@@ -12,6 +12,7 @@ import {
   failureNotification,
   shouldShowSavedHint,
   savedHintText,
+  reviewUrlFrom,
   shouldEnqueue,
   enqueueItem,
   flushDisposition,
@@ -154,6 +155,28 @@ describe("shouldShowSavedHint", () => {
 describe("savedHintText", () => {
   it("is a non-empty hint about the page already being saved", () => {
     expect(savedHintText().toLowerCase()).toContain("trail");
+  });
+});
+
+describe("reviewUrlFrom", () => {
+  it("builds an /app/ deep link carrying the read token from the feed URL", () => {
+    const url = reviewUrlFrom(
+      "https://linktrail-alpha.vercel.app",
+      "https://linktrail-alpha.vercel.app/api/feed?token=READ123",
+    );
+    expect(url).toBe("https://linktrail-alpha.vercel.app/app/?token=READ123");
+  });
+
+  it("trims a trailing slash on the backend URL", () => {
+    expect(reviewUrlFrom("https://x.com/", "https://x.com/api/feed?token=t")).toBe(
+      "https://x.com/app/?token=t",
+    );
+  });
+
+  it("returns null when backend, feed, or token is missing", () => {
+    expect(reviewUrlFrom(undefined, "https://x/api/feed?token=t")).toBeNull();
+    expect(reviewUrlFrom("https://x", undefined)).toBeNull();
+    expect(reviewUrlFrom("https://x", "https://x/api/feed")).toBeNull();
   });
 });
 

@@ -28,6 +28,7 @@ let verifyGET: (req: Request) => Promise<Response>;
 let verifyOPTIONS: (req: Request) => Promise<Response>;
 let statusGET: (req: Request) => Promise<Response>;
 let statusOPTIONS: (req: Request) => Promise<Response>;
+let itemsGET: (req: Request) => Promise<Response>;
 let sql: (typeof import("../lib/db"))["sql"];
 
 beforeAll(async () => {
@@ -38,6 +39,7 @@ beforeAll(async () => {
   verifyOPTIONS = (await import("../api/verify")).OPTIONS;
   statusGET = (await import("../api/status")).GET;
   statusOPTIONS = (await import("../api/status")).OPTIONS;
+  itemsGET = (await import("../api/items")).GET;
   sql = (await import("../lib/db")).sql;
 });
 
@@ -204,6 +206,54 @@ describe("GET /api/status — saved lookup (DB-gated)", () => {
     expect(typeof body.id).toBe("string");
 
     await sql`DELETE FROM saved_items WHERE normalized_url = ${normalizeUrl(marker)}`;
+  });
+});
+
+describe("GET /api/items — auth (no DB)", () => {
+  it("401s with no token", async () => {
+    const res = await itemsGET(new Request("https://x/api/items"));
+    expect(res.status).toBe(401);
+  });
+
+  it("401s with a wrong token", async () => {
+    const res = await itemsGET(new Request("https://x/api/items?token=wrong"));
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /api/items — full history (DB-gated)", () => {
+  const marker = `https://linktrail-items.example/${Date.now()}`;
+
+  dbit("returns saved items as JSON, newest-first, with the app shape", async () => {
+    const older = `${marker}/older`;
+    const newer = `${marker}/newer`;
+    const auth = {
+      Authorization: `Bearer ${process.env.WRITE_TOKEN}`,
+      "Content-Type": "application/json",
+    };
+    await POST(saveReq(auth, { url: older, title: "Older Item" }));
+    await POST(saveReq(auth, { url: newer, title: "Newer Item" }));
+
+    const res = await itemsGET(
+      new Request(`https://x/api/items?token=${process.env.READ_TOKEN}`),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("application/json");
+
+    const items = (await res.json()) as Array<{
+      id: string;
+      url: string;
+      title: string;
+      capturedAt: string;
+    }>;
+    const ours = items.filter((i) => i.url === older || i.url === newer);
+    expect(ours.map((i) => i.url)).toEqual([newer, older]); // newest-first
+    expect(ours[0].title).toBe("Newer Item");
+    expect(typeof ours[0].id).toBe("string");
+    // capturedAt is a parseable ISO timestamp.
+    expect(Number.isNaN(Date.parse(ours[0].capturedAt))).toBe(false);
+
+    await sql`DELETE FROM saved_items WHERE original_url IN (${older}, ${newer})`;
   });
 });
 

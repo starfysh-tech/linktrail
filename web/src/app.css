@@ -1,0 +1,221 @@
+/* Review app — same "graphite + warm amber" language as the popup/options.
+   A graphite material fills the page; cards and controls are glass; one warm
+   amber accent for the primary action and the active date preset. */
+:root {
+  --grA: #45454b;
+  --grB: #1f1f22;
+  --on: #fff;
+  --on-2: rgba(255, 255, 255, 0.82);
+  --on-3: rgba(255, 255, 255, 0.56);
+  --glass: rgba(255, 255, 255, 0.16);
+  --glass-2: rgba(255, 255, 255, 0.24);
+  --line: rgba(255, 255, 255, 0.34);
+  --hair: rgba(255, 255, 255, 0.12);
+  --accent-1: #ffc062;
+  --accent-2: #ff9f0a;
+  --accent-ink: #2a1c02;
+  --fail: #ff8a82;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --grA: #3a3a40;
+    --grB: #161618;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--on);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(70% 50% at 12% -8%, rgba(255, 244, 230, 0.1), transparent 55%),
+    linear-gradient(168deg, var(--grA) 0%, var(--grB) 70%) fixed;
+}
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 20px 64px;
+}
+.muted {
+  color: var(--on-3);
+}
+.error {
+  color: var(--fail);
+  font-size: 13px;
+}
+
+/* ---- Header --------------------------------------------------------------- */
+.head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 22px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--on-2);
+}
+.brand svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--accent-2);
+}
+
+/* ---- Gate ----------------------------------------------------------------- */
+.gate {
+  margin-top: 8vh;
+  text-align: center;
+}
+.gate h1 {
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+.gate .muted code {
+  color: var(--on-2);
+}
+.gate-row {
+  display: flex;
+  gap: 8px;
+  max-width: 420px;
+  margin: 18px auto 0;
+}
+
+/* ---- Inputs & buttons ----------------------------------------------------- */
+input {
+  flex: 1;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--on);
+  border: 0.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--glass);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+}
+input::placeholder {
+  color: var(--on-3);
+}
+button {
+  font: inherit;
+  font-weight: 600;
+  color: var(--on);
+  border: 0.5px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  background: var(--glass);
+  backdrop-filter: blur(16px) saturate(1.8);
+  -webkit-backdrop-filter: blur(16px) saturate(1.8);
+}
+button:hover {
+  background: var(--glass-2);
+}
+button.primary {
+  color: var(--accent-ink);
+  border: none;
+  background: linear-gradient(180deg, var(--accent-1), var(--accent-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+@supports (background: linear-gradient(color(display-p3 1 0 0), blue)) {
+  button.primary {
+    background: linear-gradient(180deg, color(display-p3 1 0.75 0.38), color(display-p3 1 0.62 0.04));
+  }
+}
+
+/* ---- Controls ------------------------------------------------------------- */
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.controls #search {
+  min-width: 200px;
+}
+.presets {
+  display: flex;
+  gap: 6px;
+}
+.preset {
+  padding: 8px 12px;
+  font-size: 13px;
+}
+.preset[aria-pressed="true"] {
+  color: var(--accent-ink);
+  border-color: transparent;
+  background: linear-gradient(180deg, var(--accent-1), var(--accent-2));
+}
+.count {
+  font-size: 12px;
+  margin: 14px 2px 6px;
+}
+
+/* ---- List ----------------------------------------------------------------- */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.item-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  text-decoration: none;
+  color: inherit;
+  border: 0.5px solid var(--hair);
+  border-radius: 12px;
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+}
+.item-link:hover {
+  background: var(--glass-2);
+}
+.tile {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: linear-gradient(180deg, var(--accent-1), var(--accent-2));
+}
+.meta {
+  min-width: 0;
+}
+.title {
+  margin: 0;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sub {
+  margin: 2px 0 0;
+  font-size: 12.5px;
+  color: var(--on-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.empty,
+.status {
+  margin-top: 24px;
+  text-align: center;
+}

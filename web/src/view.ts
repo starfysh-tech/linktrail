@@ -1,0 +1,89 @@
+/**
+ * Pure view-decision functions for the review app — the testable seam (mirrors
+ * the extension's capture.ts). No DOM, no fetch: all search / sort / date-filter
+ * / token / auth logic lives here so it can be unit-tested in isolation; app.ts
+ * wires it to the runtime.
+ */
+import type { Item } from "../../lib/contract";
+
+export type DatePreset = "all" | "today" | "week" | "month";
+export type AuthState = "gate" | "ready";
+
+/** Pull a `?token=` value from a URL, or null if absent/unparseable. */
+export function parseToken(url: string): string | null {
+  try {
+    return new URL(url).searchParams.get("token");
+  } catch {
+    return null;
+  }
+}
+
+/** Have a token → show the list; otherwise → show the gate. */
+export function authState(token: string | null | undefined): AuthState {
+  return token ? "ready" : "gate";
+}
+
+/**
+ * Case-insensitive substring match on title OR URL. An empty/whitespace query
+ * matches everything (no filtering).
+ */
+export function filterItems(items: Item[], query: string): Item[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return items;
+  return items.filter(
+    (i) => i.title.toLowerCase().includes(q) || i.url.toLowerCase().includes(q),
+  );
+}
+
+/** Newest-first by capturedAt; returns a new array (does not mutate input). */
+export function sortItems(items: Item[]): Item[] {
+  return [...items].sort((a, b) => Date.parse(b.capturedAt) - Date.parse(a.capturedAt));
+}
+
+/**
+ * Inclusive lower bound (epoch ms) for a date preset relative to `now`.
+ * "today" is local-midnight; "week"/"month" are rolling 7-/30-day windows.
+ * "all" returns 0 (no bound).
+ */
+export function presetSince(preset: DatePreset, now: number): number {
+  const d = new Date(now);
+  switch (preset) {
+    case "all":
+      return 0;
+    case "today":
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    case "week":
+      return now - 7 * 24 * 60 * 60 * 1000;
+    case "month":
+      return now - 30 * 24 * 60 * 60 * 1000;
+  }
+}
+
+/** Keep items captured at or after the preset's lower bound. */
+export function filterByDate(items: Item[], preset: DatePreset, now: number): Item[] {
+  const since = presetSince(preset, now);
+  if (since === 0) return items;
+  return items.filter((i) => Date.parse(i.capturedAt) >= since);
+}
+
+/** Bare domain for display (drops scheme + leading www.); raw input on failure. */
+export function domainOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+/** Compact relative time ("just now", "5m ago", "3h ago", "2d ago"); date past a week. */
+export function relativeTime(capturedAt: string, now: number): string {
+  const diff = now - Date.parse(capturedAt);
+  const min = 60_000;
+  const hr = 60 * min;
+  const day = 24 * hr;
+  if (diff < min) return "just now";
+  if (diff < hr) return `${Math.floor(diff / min)}m ago`;
+  if (diff < day) return `${Math.floor(diff / hr)}h ago`;
+  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
+  return new Date(capturedAt).toLocaleDateString();
+}

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Linktrail — your history</title>
+    <link rel="stylesheet" href="./src/app.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="head">
+        <span class="brand">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z" /></svg>
+          Linktrail
+        </span>
+      </header>
+
+      <!-- Unauthenticated gate: shown when no valid read token is available. -->
+      <section id="gate" class="gate" hidden>
+        <h1>Your reading history</h1>
+        <p class="muted">Paste your read token to unlock. It's the <code>token</code> in your feed URL (Settings → Your feed).</p>
+        <div class="gate-row">
+          <input id="token-input" type="password" placeholder="Read token" autocomplete="off" />
+          <button id="unlock" type="button" class="primary">Unlock</button>
+        </div>
+        <p id="gate-error" class="error" hidden></p>
+      </section>
+
+      <!-- Authenticated view. -->
+      <section id="app" class="app" hidden>
+        <div class="controls">
+          <input id="search" type="search" placeholder="Search title or URL…" autocomplete="off" />
+          <div class="presets" role="group" aria-label="Filter by date">
+            <button type="button" class="preset" data-preset="all" aria-pressed="true">All</button>
+            <button type="button" class="preset" data-preset="today" aria-pressed="false">Today</button>
+            <button type="button" class="preset" data-preset="week" aria-pressed="false">Week</button>
+            <button type="button" class="preset" data-preset="month" aria-pressed="false">Month</button>
+          </div>
+        </div>
+        <p id="count" class="muted count"></p>
+        <ul id="list" class="list"></ul>
+        <p id="empty" class="muted empty" hidden>Nothing here yet.</p>
+      </section>
+
+      <p id="status" class="status" hidden></p>
+    </main>
+
+    <script type="module" src="./src/app.ts"></script>
+  </body>
+</html>

@@ -22,6 +22,18 @@ export interface SaveResponse {
 }
 
 /**
+ * A saved item as returned by `GET /api/items` and consumed by the review web
+ * app. Read-only projection of `saved_items` — the normalized URL stays
+ * server-side. `capturedAt` is an ISO-8601 string for portable client parsing.
+ */
+export interface Item {
+  id: string;
+  url: string;
+  title: string;
+  capturedAt: string;
+}
+
+/**
  * Status endpoint response. The popup calls this on open to learn whether the
  * current tab is already in the trail, so it can show a subtle "already saved"
  * hint. `saved` is the only thing the popup needs; `id` is returned for parity

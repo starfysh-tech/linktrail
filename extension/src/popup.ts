@@ -19,6 +19,7 @@ import {
   failureText,
   shouldShowSavedHint,
   shouldEnqueue,
+  reviewUrlFrom,
   type CaptureState,
 } from "./capture";
 import { enqueueCapture, flushQueue } from "./queue";
@@ -36,6 +37,7 @@ const els = {
   saveBtn: $<HTMLButtonElement>("save-btn"),
   resultStrip: $("result-strip"),
   openFeed: $("open-feed"),
+  openHistory: $("open-history"),
   openSettings: $("open-settings"),
 };
 
@@ -80,6 +82,7 @@ async function init(): Promise<void> {
 
   els.saveBtn?.addEventListener("click", () => void save(tab));
   els.openFeed?.addEventListener("click", () => void openFeed());
+  els.openHistory?.addEventListener("click", () => void openHistory());
   els.openSettings?.addEventListener("click", () => chrome.runtime.openOptionsPage());
 
   // Fire-and-forget: reveal the "already saved" hint if the backend confirms it.
@@ -167,6 +170,17 @@ async function save(tab: chrome.tabs.Tab): Promise<void> {
   }
 
   render(state, status);
+}
+
+/** Open the review app authenticated, or fall back to options if not set up yet. */
+async function openHistory(): Promise<void> {
+  const { backendUrl, feedUrl } = await chrome.storage.sync.get(["backendUrl", "feedUrl"]);
+  const url = reviewUrlFrom(backendUrl, feedUrl);
+  if (url) {
+    await chrome.tabs.create({ url });
+  } else {
+    chrome.runtime.openOptionsPage();
+  }
 }
 
 /** Open the saved feed URL, or fall back to options if it hasn't been configured yet. */

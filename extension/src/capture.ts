@@ -232,6 +232,27 @@ export function savedHintText(): string {
   return "Already in your trail";
 }
 
+/**
+ * Build the authenticated deep-link into the review app, or null if we can't
+ * (no backend / no feed configured yet). The read token is lifted from the
+ * stored feed URL — the popup never stores the read token separately — and the
+ * app lives at `/app/` on the same origin as the backend.
+ */
+export function reviewUrlFrom(
+  backendUrl: string | undefined,
+  feedUrl: string | undefined,
+): string | null {
+  if (!backendUrl || !feedUrl) return null;
+  try {
+    const token = new URL(feedUrl).searchParams.get("token");
+    if (!token) return null;
+    const base = backendUrl.replace(/\/+$/, "");
+    return `${base}/app/?token=${encodeURIComponent(token)}`;
+  } catch {
+    return null;
+  }
+}
+
 /** Result-strip / status-pill text for each capture state. */
 export function resultText(state: CaptureState): string {
   switch (state) {

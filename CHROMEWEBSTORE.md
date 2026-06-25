@@ -25,6 +25,7 @@ FEATURES
 • One-tap save from the toolbar — click the icon, glance at the page title, and hit Save.
 • Instant keyboard save — press the shortcut (Ctrl+Shift+L, or Command+Shift+L on Mac) and the page is saved silently, with a small badge to confirm.
 • Your reading history as an RSS feed — saved pages appear newest-first in a private feed you subscribe to in your own reader.
+• Search your whole history — a private web view (opened from the popup's History button) lets you search and browse everything you've ever saved, not just the latest items.
 • Private by design — your saved pages go only to a backend you set up and own. There's no shared Linktrail server.
 • Settings that follow you — your setup is remembered across the Chrome profiles you sign into, so you only configure it once.
 • Never lose a save — if a page can't reach your backend (you're offline, or it's briefly down), it's queued and retried automatically until it goes through.
@@ -186,6 +187,7 @@ and published builds.
 | 0.9.0 | 2026-06-25 | Popup "already saved on open" hint + `GET /api/status` endpoint. | Draft |
 | 0.10.0 | 2026-06-25 | Offline retry queue: temporary failures are parked in `chrome.storage.local` and auto-retried (new `alarms` permission). | Draft |
 | 0.11.0 | 2026-06-25 | Optional host access requested at runtime for the user's backend origin, so CORS-less self-hosted backends work (additive; CORS fallback retained). | Draft |
+| 0.12.0 | 2026-06-25 | Popup "History" chip opening a private, read-only review web app (search/browse full history) at `/app`, backed by new `GET /api/items`. No new permission. | Draft |
 
 ## Review Notes
 
