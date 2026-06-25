@@ -1,6 +1,6 @@
 {
   "name": "linktrail",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "private": true,
   "type": "module",
   "description": "Capture the current tab into a personal RSS-backed reading history.",

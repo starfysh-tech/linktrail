@@ -26,6 +26,8 @@ let GET: (req: Request) => Promise<Response>;
 let saveOPTIONS: (req: Request) => Promise<Response>;
 let verifyGET: (req: Request) => Promise<Response>;
 let verifyOPTIONS: (req: Request) => Promise<Response>;
+let statusGET: (req: Request) => Promise<Response>;
+let statusOPTIONS: (req: Request) => Promise<Response>;
 let sql: (typeof import("../lib/db"))["sql"];
 
 beforeAll(async () => {
@@ -34,8 +36,17 @@ beforeAll(async () => {
   saveOPTIONS = (await import("../api/save")).OPTIONS;
   verifyGET = (await import("../api/verify")).GET;
   verifyOPTIONS = (await import("../api/verify")).OPTIONS;
+  statusGET = (await import("../api/status")).GET;
+  statusOPTIONS = (await import("../api/status")).OPTIONS;
   sql = (await import("../lib/db")).sql;
 });
+
+function statusReq(token: string | undefined, url: string | undefined): Request {
+  const qs = url === undefined ? "" : `?url=${encodeURIComponent(url)}`;
+  const headers: Record<string, string> =
+    token === undefined ? {} : { Authorization: `Bearer ${token}` };
+  return new Request(`https://x/api/status${qs}`, { headers });
+}
 
 function saveReq(headers: Record<string, string>, body: unknown): Request {
   return new Request("https://x/api/save", {
@@ -132,6 +143,67 @@ describe("GET /api/verify — success (DB-gated)", () => {
     const body = (await res.json()) as { ok: boolean; feedUrl: string };
     expect(body.ok).toBe(true);
     expect(body.feedUrl).toContain("/api/feed?token=");
+  });
+});
+
+describe("GET /api/status — auth, validation & CORS (no DB)", () => {
+  it("401s with no Authorization header, body { saved: false }", async () => {
+    const res = await statusGET(statusReq(undefined, "https://e.com"));
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as { saved: boolean }).saved).toBe(false);
+  });
+
+  it("401s with a wrong bearer token", async () => {
+    const res = await statusGET(statusReq("wrong", "https://e.com"));
+    expect(res.status).toBe(401);
+  });
+
+  it("400s when the url query param is missing", async () => {
+    const res = await statusGET(statusReq(process.env.WRITE_TOKEN, undefined));
+    expect(res.status).toBe(400);
+  });
+
+  it("400s for a non-http(s) url", async () => {
+    const res = await statusGET(statusReq(process.env.WRITE_TOKEN, "chrome://settings"));
+    expect(res.status).toBe(400);
+  });
+
+  it("status OPTIONS returns 204 with permissive CORS allowing Authorization", async () => {
+    const res = await statusOPTIONS(new Request("https://x/api/status", { method: "OPTIONS" }));
+    expect(res.status).toBe(204);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Allow-Headers")).toContain("Authorization");
+  });
+});
+
+describe("GET /api/status — saved lookup (DB-gated)", () => {
+  const auth = process.env.WRITE_TOKEN;
+  const marker = `https://linktrail-status.example/${Date.now()}`;
+
+  dbit("reports saved: false for a url that was never saved", async () => {
+    const res = await statusGET(statusReq(auth, `${marker}/never`));
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { saved: boolean }).saved).toBe(false);
+  });
+
+  dbit("reports saved: true after the url is saved, matching normalized identity", async () => {
+    // Save the canonical form, then query a normalized-equivalent variant
+    // (www. + tracking param + fragment) — both share one identity.
+    await POST(
+      saveReq(
+        { Authorization: `Bearer ${auth}`, "Content-Type": "application/json" },
+        { url: marker, title: "Status Marker" },
+      ),
+    );
+
+    const variant = marker.replace("https://", "https://www.") + "/?utm_source=z#frag";
+    const res = await statusGET(statusReq(auth, variant));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { saved: boolean; id?: string };
+    expect(body.saved).toBe(true);
+    expect(typeof body.id).toBe("string");
+
+    await sql`DELETE FROM saved_items WHERE normalized_url = ${normalizeUrl(marker)}`;
   });
 });
 

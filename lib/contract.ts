@@ -22,6 +22,17 @@ export interface SaveResponse {
 }
 
 /**
+ * Status endpoint response. The popup calls this on open to learn whether the
+ * current tab is already in the trail, so it can show a subtle "already saved"
+ * hint. `saved` is the only thing the popup needs; `id` is returned for parity
+ * with the save contract and possible future use (e.g. deep-linking).
+ */
+export interface StatusResponse {
+  saved: boolean;
+  id?: string;
+}
+
+/**
  * Verify endpoint response ("Test connection" in options). On success the
  * backend returns the feed URL (read token embedded) so the options page can
  * display/store it — the user only ever enters the backend URL + write token.

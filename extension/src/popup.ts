@@ -17,9 +17,10 @@ import {
   resultText,
   failureKind,
   failureText,
+  shouldShowSavedHint,
   type CaptureState,
 } from "./capture";
-import type { SaveResponse } from "../../lib/contract";
+import type { SaveResponse, StatusResponse } from "../../lib/contract";
 
 // Cached element lookups. Nullable: the popup must not crash if markup drifts.
 const $ = <T extends HTMLElement>(id: string): T | null =>
@@ -29,6 +30,7 @@ const els = {
   favicon: $<HTMLImageElement>("favicon"),
   title: $("title"),
   urlPreview: $("url-preview"),
+  savedHint: $("saved-hint"),
   saveBtn: $<HTMLButtonElement>("save-btn"),
   resultStrip: $("result-strip"),
   openFeed: $("open-feed"),
@@ -77,6 +79,33 @@ async function init(): Promise<void> {
   els.saveBtn?.addEventListener("click", () => void save(tab));
   els.openFeed?.addEventListener("click", () => void openFeed());
   els.openSettings?.addEventListener("click", () => chrome.runtime.openOptionsPage());
+
+  // Fire-and-forget: reveal the "already saved" hint if the backend confirms it.
+  // Never awaited and never blocks Save — a slow/offline/undeployed status
+  // endpoint simply leaves the normal ready view untouched.
+  void maybeShowSavedHint(tab);
+}
+
+/**
+ * Ask the backend whether the current tab is already in the trail and, if so,
+ * reveal the subtle hint. Stays silent on missing config or any error: the hint
+ * is purely additive, so failure degrades to "no hint", never to a blocked save.
+ */
+async function maybeShowSavedHint(tab: chrome.tabs.Tab): Promise<void> {
+  const { backendUrl, writeToken } = await chrome.storage.sync.get(["backendUrl", "writeToken"]);
+  if (!backendUrl || !writeToken || !tab.url) return;
+
+  try {
+    const res = await fetch(`${backendUrl}/api/status?url=${encodeURIComponent(tab.url)}`, {
+      headers: { Authorization: `Bearer ${writeToken}` },
+    });
+    const body = res.ok ? ((await res.json()) as StatusResponse) : undefined;
+    if (shouldShowSavedHint(res.status, body) && els.savedHint) {
+      els.savedHint.hidden = false;
+    }
+  } catch {
+    // Offline / DNS / CORS — stay quiet, leave the ready view as-is.
+  }
 }
 
 /** POST the current tab to the backend and reflect the outcome in the UI. */

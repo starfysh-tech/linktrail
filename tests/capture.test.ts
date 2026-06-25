@@ -10,6 +10,8 @@ import {
   badgeFor,
   badgeAutoClears,
   failureNotification,
+  shouldShowSavedHint,
+  savedHintText,
 } from "../extension/src/capture";
 
 describe("isCapturable", () => {
@@ -118,6 +120,33 @@ describe("badgeFor / badgeAutoClears", () => {
     expect(badgeAutoClears("duplicate")).toBe(true);
     expect(badgeAutoClears("not-capturable")).toBe(true);
     expect(badgeAutoClears("failed")).toBe(false);
+  });
+});
+
+describe("shouldShowSavedHint", () => {
+  it("shows the hint only for a 200 with saved: true", () => {
+    expect(shouldShowSavedHint(200, { saved: true })).toBe(true);
+  });
+
+  it("hides the hint for a 200 reporting not saved", () => {
+    expect(shouldShowSavedHint(200, { saved: false })).toBe(false);
+  });
+
+  it("hides the hint on any error status, regardless of body", () => {
+    expect(shouldShowSavedHint(401, { saved: true })).toBe(false);
+    expect(shouldShowSavedHint(503, { saved: true })).toBe(false);
+    expect(shouldShowSavedHint(0)).toBe(false); // network-error sentinel
+  });
+
+  it("hides the hint when the body is missing or malformed", () => {
+    expect(shouldShowSavedHint(200)).toBe(false);
+    expect(shouldShowSavedHint(200, {})).toBe(false);
+  });
+});
+
+describe("savedHintText", () => {
+  it("is a non-empty hint about the page already being saved", () => {
+    expect(savedHintText().toLowerCase()).toContain("trail");
   });
 });
 

@@ -128,6 +128,23 @@ export function failureNotification(kind: FailureKind): { title: string; message
       };
 }
 
+/**
+ * Whether to show the subtle "already in your trail" hint when the popup opens.
+ *
+ * True ONLY for a clean 200 whose body reports `saved: true`. Any other status
+ * (auth/validation error, 5xx, network failure represented elsewhere) yields
+ * false: the hint is purely additive, so an unreachable or undeployed status
+ * endpoint simply shows no hint and never disturbs the normal "ready" view.
+ */
+export function shouldShowSavedHint(status: number, body?: { saved?: boolean }): boolean {
+  return status === 200 && body?.saved === true;
+}
+
+/** Copy for the on-open "already saved" hint (centralized for testability). */
+export function savedHintText(): string {
+  return "Already in your trail";
+}
+
 /** Result-strip / status-pill text for each capture state. */
 export function resultText(state: CaptureState): string {
   switch (state) {
