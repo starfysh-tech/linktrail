@@ -27,6 +27,8 @@ FEATURES
 • Your reading history as an RSS feed — saved pages appear newest-first in a private feed you subscribe to in your own reader.
 • Private by design — your saved pages go only to a backend you set up and own. There's no shared Linktrail server.
 • Settings that follow you — your setup is remembered across the Chrome profiles you sign into, so you only configure it once.
+• Never lose a save — if a page can't reach your backend (you're offline, or it's briefly down), it's queued and retried automatically until it goes through.
+• Knows what you've kept — opening the popup on a page you've already saved shows a subtle "already in your trail" hint, so you don't save it twice.
 • Light and dark, native feel — a clean, glass-style interface that matches your system appearance.
 
 HOW TO USE
@@ -41,7 +43,8 @@ Linktrail does not run a shared server, does not collect analytics, and does not
 PERMISSIONS
 • "Read the current tab" (activeTab) — used only when you click the toolbar icon or press the shortcut, to read the open page's address and title so it can be saved. Linktrail never watches your tabs in the background.
 • "Storage" — remembers your backend address, write token, and feed address so you don't re-enter them on every computer.
-• "Notifications" — shows a single message only if a save fails, so you never silently lose a page you meant to keep.
+• "Notifications" — shows a brief message if a save needs your attention or when queued pages finish syncing, so you're never left guessing.
+• "Alarms" — lets Linktrail periodically retry saves that were queued while you were offline, even when the popup is closed.
 
 SUPPORT
 Questions, bugs, or suggestions? Open an issue on the project's GitHub repository or email the address on this listing.
@@ -89,7 +92,8 @@ there are no separate light/dark shots).
 |------------|------|---------------|
 | activeTab | permissions | Reads the current tab's URL and title only at the moment the user explicitly triggers a save — either clicking the toolbar icon or pressing the keyboard shortcut — so that page can be added to their reading history. The extension has no background or continuous access to tabs and reads nothing until the user acts. |
 | storage | permissions | Persists the user's own configuration — their backend URL, write token, and feed URL — using `chrome.storage.sync` so the one-time setup roams across the user's Chrome profiles and does not have to be re-entered on each machine. No browsing data or page content is stored. |
-| notifications | permissions | Shows a single notification only when a save fails, so the user is told immediately rather than silently losing a page they intended to keep. It is never used for marketing, promotions, or recurring alerts. |
+| notifications | permissions | Shows a brief notification when a save needs the user's attention (e.g. a misconfiguration), is queued because the backend was unreachable, or when previously-queued pages finish syncing. Never used for marketing, promotions, or recurring alerts. |
+| alarms | permissions | Schedules a periodic background retry of saves that were queued while the user was offline or the backend was briefly unreachable, so a flagged page eventually reaches the user's trail without manual action. Used only for this retry timer — no tracking or scheduled content. |
 
 > No `host_permissions` are requested. Linktrail reaches the user's backend with ordinary network requests; the user's backend is responsible for allowing cross-origin requests (permissive CORS), so no host access needs to be granted to the extension.
 
@@ -114,6 +118,7 @@ there are no separate light/dark shots).
 Notes for the disclosure form:
 - The user's configuration (backend URL, write token, feed URL) is stored with `chrome.storage.sync`, which means Chrome transmits it to Google's sync servers to roam across the user's profiles. Declare `chrome.storage.sync` use accordingly.
 - The captured URL/title/timestamp leave the device only to reach the backend the user set up. There is no Linktrail-operated collection point.
+- Saves that fail transiently (offline / backend unreachable) are parked in `chrome.storage.local` — a device-local, bounded queue (URL + title + timestamp) — and removed once they sync. This is on-device only and is NOT transmitted to Google sync.
 
 ### Data Use Certification
 - [x] Data is NOT sold to third parties
@@ -176,6 +181,8 @@ and published builds.
 |---------|------|---------|--------|
 | 0.8.0 | 2026-06-25 | Initial submission: toolbar save, keyboard-shortcut save, private RSS reading history, first-run backend + write-token setup. | Draft |
 | 0.8.1 | 2026-06-25 | Add `homepage_url` (landing page); publish landing + privacy policy via GitHub Pages. | Draft |
+| 0.9.0 | 2026-06-25 | Popup "already saved on open" hint + `GET /api/status` endpoint. | Draft |
+| 0.10.0 | 2026-06-25 | Offline retry queue: temporary failures are parked in `chrome.storage.local` and auto-retried (new `alarms` permission). | Draft |
 
 ## Review Notes
 
@@ -190,7 +197,7 @@ Manifest & package
 - [x] Built ZIP excludes dev files. `bun run package` zips ONLY `dist/extension` → `dist/linktrail-0.8.1.zip` (no source, `.git`, env, docs, or `CHROMEWEBSTORE.md`).
 
 Permissions
-- [x] Manifest requests exactly `["activeTab","storage","notifications"]` — no extras, no `host_permissions`, no `<all_urls>`.
+- [x] Manifest requests exactly `["activeTab","storage","notifications","alarms"]` — no extras, no `host_permissions`, no `<all_urls>`.
 - [x] Each permission's dashboard justification is filled in from the Permissions Justification table above (plain-English, feature-specific).
 
 Listing content

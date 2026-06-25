@@ -266,6 +266,11 @@ body::after {
   color: var(--ok);
   background: var(--ok-bg);
 }
+.state-queued #result-strip {
+  display: block;
+  color: var(--accent-1);
+  background: rgba(255, 159, 10, 0.18);
+}
 .state-failed #result-strip {
   display: block;
   color: var(--fail);

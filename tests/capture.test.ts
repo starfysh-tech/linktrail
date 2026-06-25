@@ -12,6 +12,13 @@ import {
   failureNotification,
   shouldShowSavedHint,
   savedHintText,
+  shouldEnqueue,
+  enqueueItem,
+  flushDisposition,
+  queuedNotification,
+  flushedNotification,
+  QUEUE_MAX,
+  type QueuedCapture,
 } from "../extension/src/capture";
 
 describe("isCapturable", () => {
@@ -147,6 +154,82 @@ describe("shouldShowSavedHint", () => {
 describe("savedHintText", () => {
   it("is a non-empty hint about the page already being saved", () => {
     expect(savedHintText().toLowerCase()).toContain("trail");
+  });
+});
+
+describe("shouldEnqueue", () => {
+  it("queues temporary failures (5xx / network sentinel)", () => {
+    expect(shouldEnqueue(500)).toBe(true);
+    expect(shouldEnqueue(503)).toBe(true);
+    expect(shouldEnqueue(0)).toBe(true);
+  });
+
+  it("does NOT queue config failures (4xx)", () => {
+    expect(shouldEnqueue(401)).toBe(false);
+    expect(shouldEnqueue(400)).toBe(false);
+    expect(shouldEnqueue(404)).toBe(false);
+  });
+});
+
+describe("enqueueItem", () => {
+  const mk = (url: string, queuedAt = 1): QueuedCapture => ({ url, title: "t", queuedAt });
+
+  it("appends a new capture as most-recent", () => {
+    const q = enqueueItem([mk("https://a.com")], mk("https://b.com", 2));
+    expect(q.map((i) => i.url)).toEqual(["https://a.com", "https://b.com"]);
+  });
+
+  it("dedupes by normalized identity, keeping the newer entry at the end", () => {
+    const q = enqueueItem(
+      [mk("https://www.a.com/?utm_source=x", 1), mk("https://b.com", 2)],
+      mk("https://a.com", 3),
+    );
+    // The www./tracking variant collapses to the same identity as a.com.
+    expect(q.map((i) => i.url)).toEqual(["https://b.com", "https://a.com"]);
+    expect(q[q.length - 1].queuedAt).toBe(3);
+  });
+
+  it("caps the queue by evicting the oldest", () => {
+    const seed = Array.from({ length: QUEUE_MAX }, (_, i) => mk(`https://e.com/${i}`, i));
+    const q = enqueueItem(seed, mk("https://e.com/new", 999));
+    expect(q.length).toBe(QUEUE_MAX);
+    expect(q[0].url).toBe("https://e.com/1"); // /0 evicted
+    expect(q[q.length - 1].url).toBe("https://e.com/new");
+  });
+});
+
+describe("flushDisposition", () => {
+  it("removes items that saved (200) or are permanently invalid (400)", () => {
+    expect(flushDisposition(200)).toBe("remove");
+    expect(flushDisposition(400)).toBe("remove");
+  });
+
+  it("keeps items on transient/fixable statuses (auth, 5xx, network)", () => {
+    expect(flushDisposition(401)).toBe("keep");
+    expect(flushDisposition(503)).toBe("keep");
+    expect(flushDisposition(0)).toBe("keep");
+  });
+});
+
+describe("queued badge & copy", () => {
+  it("gives the queued state an amber hourglass badge that auto-clears", () => {
+    expect(badgeFor("queued").text).toBe("⏳");
+    expect(badgeAutoClears("queued")).toBe(true);
+  });
+
+  it("reads 'Queued — will retry' in the result strip", () => {
+    expect(resultText("queued")).toContain("Queued");
+  });
+});
+
+describe("queued / flushed notifications", () => {
+  it("queued notification reassures the page will sync later", () => {
+    expect(queuedNotification().message.toLowerCase()).toContain("sync");
+  });
+
+  it("flushed notification pluralizes the synced count", () => {
+    expect(flushedNotification(1).message).toContain("1 queued page ");
+    expect(flushedNotification(3).message).toContain("3 queued pages ");
   });
 });
 

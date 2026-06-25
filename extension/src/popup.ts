@@ -18,8 +18,10 @@ import {
   failureKind,
   failureText,
   shouldShowSavedHint,
+  shouldEnqueue,
   type CaptureState,
 } from "./capture";
+import { enqueueCapture, flushQueue } from "./queue";
 import type { SaveResponse, StatusResponse } from "../../lib/contract";
 
 // Cached element lookups. Nullable: the popup must not crash if markup drifts.
@@ -84,6 +86,21 @@ async function init(): Promise<void> {
   // Never awaited and never blocks Save — a slow/offline/undeployed status
   // endpoint simply leaves the normal ready view untouched.
   void maybeShowSavedHint(tab);
+
+  // Opportunistic drain: opening the popup while online is a good moment to
+  // retry anything parked earlier. Silent and non-blocking.
+  void flushOnOpen();
+}
+
+/** Best-effort flush of the retry queue when the popup opens; never throws. */
+async function flushOnOpen(): Promise<void> {
+  const { backendUrl, writeToken } = await chrome.storage.sync.get(["backendUrl", "writeToken"]);
+  if (!backendUrl || !writeToken) return;
+  try {
+    await flushQueue(backendUrl, writeToken);
+  } catch {
+    // Offline / unreachable — leave the queue intact for the next trigger.
+  }
 }
 
 /**
@@ -123,6 +140,8 @@ async function save(tab: chrome.tabs.Tab): Promise<void> {
     return;
   }
 
+  let state: CaptureState;
+  let status = 0; // network/thrown errors are represented as status 0 (→ temporary).
   try {
     const res = await fetch(`${backendUrl}/api/save`, {
       method: "POST",
@@ -132,14 +151,22 @@ async function save(tab: chrome.tabs.Tab): Promise<void> {
       },
       body: JSON.stringify(buildPayload({ url: tab.url!, title: tab.title })),
     });
+    status = res.status;
     const outcome = res.ok ? ((await res.json()) as SaveResponse).outcome : undefined;
-    const state = mapResponseToState(res.status, outcome);
-    render(state, res.status);
+    state = mapResponseToState(status, outcome);
   } catch {
     // Network error (offline, DNS, CORS) — distinct from an HTTP error status.
-    // Status 0 reads as temporary -> "Couldn’t save — try again".
-    render("failed", 0);
+    state = "failed";
   }
+
+  // Park a temporary failure for background retry instead of losing it; the user
+  // sees the reassuring "Queued — will retry" pill rather than a hard error.
+  if (state === "failed" && shouldEnqueue(status)) {
+    await enqueueCapture({ url: tab.url!, title: tab.title });
+    state = "queued";
+  }
+
+  render(state, status);
 }
 
 /** Open the saved feed URL, or fall back to options if it hasn't been configured yet. */

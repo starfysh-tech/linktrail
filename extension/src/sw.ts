@@ -17,10 +17,19 @@ import {
   badgeAutoClears,
   failureKind,
   failureNotification,
+  queuedNotification,
+  flushedNotification,
+  shouldEnqueue,
   type CaptureState,
 } from "./capture";
+import { enqueueCapture, flushQueue } from "./queue";
 
 const BADGE_CLEAR_MS = 2000;
+
+// Periodic retry of parked captures. chrome.alarms (not setInterval) because the
+// MV3 service worker is ephemeral; the alarm wakes it even after it's torn down.
+const FLUSH_ALARM = "linktrail-flush";
+const FLUSH_PERIOD_MIN = 5;
 
 // Notifications require an iconUrl; use the extension's own branded icon.
 const ICON = chrome.runtime.getURL("icons/128.png");
@@ -46,6 +55,36 @@ function notifyFailure(kind: ReturnType<typeof failureKind>): void {
     message,
   });
 }
+
+function notify(id: string, { title, message }: { title: string; message: string }): void {
+  chrome.notifications.create(id, { type: "basic", iconUrl: ICON, title, message });
+}
+
+/**
+ * Drain the retry queue in the background (alarm / startup). Silent when nothing
+ * is parked or config is missing; on a successful drain it confirms with a ✓
+ * badge + a single "synced N pages" notification so the user knows it caught up.
+ */
+async function backgroundFlush(): Promise<void> {
+  const { backendUrl, writeToken } = await chrome.storage.sync.get(["backendUrl", "writeToken"]);
+  if (!backendUrl || !writeToken) return;
+  const synced = await flushQueue(backendUrl, writeToken);
+  if (synced > 0) {
+    applyBadge("saved");
+    notify("linktrail-flush-synced", flushedNotification(synced));
+  }
+}
+
+// Retry triggers: a periodic alarm, browser startup, and install (also (re)arms
+// the alarm). The opportunistic flush on each manual capture lives in the
+// command handler below.
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create(FLUSH_ALARM, { periodInMinutes: FLUSH_PERIOD_MIN });
+});
+chrome.runtime.onStartup.addListener(() => void backgroundFlush());
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === FLUSH_ALARM) void backgroundFlush();
+});
 
 // A failure notification is actionable: clicking it routes to settings (the fix
 // for a config failure; harmless for a temporary one). Clear it on click.
@@ -77,6 +116,10 @@ chrome.commands.onCommand.addListener(async (command) => {
     return;
   }
 
+  // Opportunistic drain: if we're online enough to capture, flush any backlog
+  // first. Silent here — the manual capture's own feedback follows.
+  await flushQueue(backendUrl, writeToken);
+
   let state: CaptureState;
   let status = 0; // network/thrown errors are represented as status 0 (→ temporary).
   try {
@@ -96,10 +139,20 @@ chrome.commands.onCommand.addListener(async (command) => {
     state = "failed";
   }
 
+  // A temporary failure is parked for retry rather than lost: enqueue and report
+  // the reassuring "queued" outcome instead of a hard failure.
+  if (state === "failed" && shouldEnqueue(status)) {
+    await enqueueCapture({ url: tab!.url!, title: tab!.title });
+    state = "queued";
+  }
+
   applyBadge(state);
 
-  // Success/duplicate are badge-only. Only a failure notifies.
-  if (state === "failed") {
+  // Success/duplicate/queued are badge-only or get the queued notice; a config
+  // failure (the only "failed" left here) notifies the user to fix settings.
+  if (state === "queued") {
+    notify("linktrail-capture-queued", queuedNotification());
+  } else if (state === "failed") {
     notifyFailure(failureKind(status));
   }
 });

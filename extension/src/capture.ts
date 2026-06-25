@@ -17,8 +17,24 @@ export type CaptureState =
   | "saving"
   | "saved"
   | "duplicate"
+  | "queued"
   | "failed"
   | "not-capturable";
+
+/**
+ * A capture that failed transiently and was parked for retry. The queue lives in
+ * `chrome.storage.local` (device-local, bounded); identity for dedupe is the
+ * SHARED normalized URL, so a page queued twice collapses to one entry.
+ */
+export interface QueuedCapture {
+  url: string;
+  title: string;
+  /** Epoch ms when first parked — used only for ordering/diagnostics. */
+  queuedAt: number;
+}
+
+/** Max parked captures kept in storage; oldest are dropped past this bound. */
+export const QUEUE_MAX = 100;
 
 /**
  * Only http(s) pages are capturable. Everything else — browser-internal pages
@@ -92,6 +108,9 @@ export function badgeFor(state: CaptureState): { text: string; color: string } {
     case "saved":
     case "duplicate":
       return { text: "✓", color: "#34C759" };
+    case "queued":
+      // Parked for retry — amber, matching the accent, distinct from success/fail.
+      return { text: "⏳", color: "#FF9F0A" };
     case "failed":
       return { text: "✗", color: "#FF3B30" };
     case "not-capturable":
@@ -108,7 +127,75 @@ export function badgeFor(state: CaptureState): { text: string; color: string } {
  * notices it (cleared on the next capture attempt).
  */
 export function badgeAutoClears(state: CaptureState): boolean {
-  return state === "saved" || state === "duplicate" || state === "not-capturable";
+  return (
+    state === "saved" ||
+    state === "duplicate" ||
+    state === "queued" ||
+    state === "not-capturable"
+  );
+}
+
+/**
+ * Whether a failed save should be parked for retry rather than surfaced as a
+ * hard failure. Only TEMPORARY failures queue — a 5xx or a network error (status
+ * 0). Config/auth failures (4xx) are NOT queued: retrying won't help until the
+ * user fixes their settings, and parking them would pile up poison.
+ */
+export function shouldEnqueue(status: number): boolean {
+  return failureKind(status) === "temporary";
+}
+
+/**
+ * Add a capture to the queue: drop any existing entry with the same normalized
+ * identity (so re-queuing a page updates rather than duplicates it), append the
+ * new one as most-recent, and cap the queue length by evicting the oldest.
+ */
+export function enqueueItem(
+  queue: QueuedCapture[],
+  item: QueuedCapture,
+  max: number = QUEUE_MAX,
+): QueuedCapture[] {
+  const key = safeNormalize(item.url);
+  const deduped = queue.filter((q) => safeNormalize(q.url) !== key);
+  const next = [...deduped, item];
+  return next.length > max ? next.slice(next.length - max) : next;
+}
+
+/**
+ * After a retry attempt, decide a parked item's fate by HTTP status:
+ *   - 200 → saved/duplicate: it's in the trail now → remove.
+ *   - 400 → permanently invalid (poison) → remove so it can't wedge the queue.
+ *   - everything else (401/403 auth, 5xx, network 0) → keep: transient or
+ *     fixable, so the item survives until the user fixes config or the net heals.
+ */
+export function flushDisposition(status: number): "remove" | "keep" {
+  return status === 200 || status === 400 ? "remove" : "keep";
+}
+
+/** Normalize a URL for dedupe, falling back to the raw string if it won't parse. */
+function safeNormalize(url: string): string {
+  try {
+    return normalizeUrl(url);
+  } catch {
+    return url;
+  }
+}
+
+/** Notification shown when a save is parked for retry (the queued outcome). */
+export function queuedNotification(): { title: string; message: string } {
+  return {
+    title: "Linktrail — queued",
+    message: "You’re offline. This page will sync automatically when you’re back online.",
+  };
+}
+
+/** Notification shown when a background flush drains one or more parked captures. */
+export function flushedNotification(count: number): { title: string; message: string } {
+  const pages = count === 1 ? "page" : "pages";
+  return {
+    title: "Linktrail — synced",
+    message: `${count} queued ${pages} saved to your trail.`,
+  };
 }
 
 /**
@@ -156,6 +243,8 @@ export function resultText(state: CaptureState): string {
       return "Saved";
     case "duplicate":
       return "Already saved";
+    case "queued":
+      return "Queued — will retry";
     case "failed":
       return "Couldn’t save — try again";
     case "not-capturable":
