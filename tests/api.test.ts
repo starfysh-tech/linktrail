@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from "bun:test";
 import { loadEnvLocal } from "../lib/load-env";
+import { normalizeUrl } from "../lib/normalize";
 
 // Seam 1: drive the HTTP endpoints as black boxes.
 //
@@ -69,6 +70,20 @@ describe("CORS preflight (no DB)", () => {
   });
 });
 
+describe("POST /api/save — validation (no DB)", () => {
+  const auth = { Authorization: `Bearer ${process.env.WRITE_TOKEN}` };
+
+  it("rejects a non-http(s) URL with 400", async () => {
+    const res = await POST(saveReq(auth, { url: "chrome://settings", title: "x" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects a malformed URL with 400", async () => {
+    const res = await POST(saveReq(auth, { url: "not a url", title: "x" }));
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("GET /api/feed — auth (no DB)", () => {
   it("401s with no token", async () => {
     const res = await GET(new Request("https://x/api/feed"));
@@ -122,5 +137,43 @@ describe("save + feed round-trip (DB-gated)", () => {
     expect(xml.indexOf(newer)).toBeLessThan(xml.indexOf(older));
 
     await sql`DELETE FROM saved_items WHERE original_url IN (${older}, ${newer})`;
+  });
+});
+
+describe("normalization, dedupe & title fallback (DB-gated)", () => {
+  const auth = {
+    Authorization: `Bearer ${process.env.WRITE_TOKEN}`,
+    "Content-Type": "application/json",
+  };
+  const base = `https://linktrail-dedupe.example/a-${Date.now()}`;
+
+  dbit("re-saving a normalized-equivalent URL returns duplicate and adds no row", async () => {
+    // These two differ only by www., a trailing slash, a tracking param, and a
+    // fragment — all collapsed by normalization to the same identity.
+    const first = `${base}?v=1`;
+    const second = `https://www.linktrail-dedupe.example/a-${base.split("a-")[1]}/?v=1&utm_source=z#x`;
+
+    const r1 = await POST(saveReq(auth, { url: first, title: "First" }));
+    expect(((await r1.json()) as { outcome: string }).outcome).toBe("saved");
+
+    const r2 = await POST(saveReq(auth, { url: second, title: "Second" }));
+    expect(((await r2.json()) as { outcome: string }).outcome).toBe("duplicate");
+
+    const normalized = normalizeUrl(first);
+    const rows = await sql`SELECT id FROM saved_items WHERE normalized_url = ${normalized}`;
+    expect(rows.length).toBe(1);
+
+    await sql`DELETE FROM saved_items WHERE normalized_url = ${normalized}`;
+  });
+
+  dbit("an empty title is stored as the normalized host", async () => {
+    const url = `${base}/titleless`;
+    const res = await POST(saveReq(auth, { url, title: "   " }));
+    expect(res.status).toBe(200);
+
+    const rows = await sql`SELECT title FROM saved_items WHERE original_url = ${url}`;
+    expect(rows[0].title).toBe("linktrail-dedupe.example");
+
+    await sql`DELETE FROM saved_items WHERE original_url = ${url}`;
   });
 });

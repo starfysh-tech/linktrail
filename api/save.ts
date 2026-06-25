@@ -12,10 +12,12 @@ export async function OPTIONS(): Promise<Response> {
 }
 
 /**
- * Save endpoint — the thinnest possible insert for Slice 1.
+ * Save endpoint: authenticate, validate, normalize, upsert.
  *
- * Dedupe/upsert, scheme validation, title fallback, and CORS are all Slice 2 by
- * design; this slice only authenticates, normalizes, and inserts one row.
+ * Dedupe is a UNIQUE constraint on normalized_url + ON CONFLICT DO NOTHING; a
+ * re-save of a normalized-equivalent URL returns `duplicate` (a normal outcome),
+ * never a second row. Only http(s) URLs are accepted; an empty title falls back
+ * to the normalized host so the feed is never blank.
  */
 export async function POST(req: Request): Promise<Response> {
   // Auth is checked before any DB access so an unauthorized caller never
@@ -25,18 +27,45 @@ export async function POST(req: Request): Promise<Response> {
     return json({ error: "unauthorized" }, 401);
   }
 
-  const { url, title } = (await req.json()) as SaveRequest;
-  const normalized = normalizeUrl(url);
+  let body: SaveRequest;
+  try {
+    body = (await req.json()) as SaveRequest;
+  } catch {
+    return json({ error: "invalid-body" }, 400);
+  }
+  const { url, title } = body;
 
-  const rows = await sql`
+  // Server-side scheme guard: reject non-http(s) so junk never reaches the
+  // datastore even if the client's is-capturable check was bypassed.
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return json({ error: "invalid-url" }, 400);
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    return json({ error: "invalid-url" }, 400);
+  }
+
+  const normalized = normalizeUrl(url);
+  // Title fallback: empty/whitespace title becomes the normalized host.
+  const finalTitle = (title ?? "").trim() || new URL(normalized).hostname;
+
+  const inserted = await sql`
     INSERT INTO saved_items (original_url, normalized_url, title)
-    VALUES (${url}, ${normalized}, ${title})
+    VALUES (${url}, ${normalized}, ${finalTitle})
+    ON CONFLICT (normalized_url) DO NOTHING
     RETURNING id
   `;
-  const id = rows[0].id as string;
+  if (inserted.length > 0) {
+    return json({ outcome: "saved", id: inserted[0].id as string } satisfies SaveResponse, 200);
+  }
 
-  const body: SaveResponse = { outcome: "saved", id };
-  return json(body, 200);
+  // Conflict: the normalized URL already exists — return its id as a duplicate.
+  const existing = await sql`
+    SELECT id FROM saved_items WHERE normalized_url = ${normalized}
+  `;
+  return json({ outcome: "duplicate", id: existing[0].id as string } satisfies SaveResponse, 200);
 }
 
 function json(body: unknown, status: number): Response {
