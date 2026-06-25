@@ -4,6 +4,7 @@
  * Deliberately free of any `chrome.*` or `fetch` calls so these can be unit
  * tested in isolation; the service worker (sw.ts) wires them to the runtime.
  */
+import { normalizeUrl } from "../../lib/normalize";
 import type { SaveRequest, SaveOutcome } from "../../lib/contract";
 
 /**
@@ -50,4 +51,35 @@ export function mapResponseToState(status: number, outcome?: SaveOutcome): Captu
     return outcome === "duplicate" ? "duplicate" : "saved";
   }
   return "failed";
+}
+
+/**
+ * A cleaned-up URL for display in the popup's page card. Runs the SHARED
+ * normalization (so the preview reflects the actual dedupe identity) and drops
+ * the `https://` scheme for a calmer, Safari-like presentation.
+ */
+export function previewUrl(rawUrl: string): string {
+  try {
+    return normalizeUrl(rawUrl).replace(/^https:\/\//, "");
+  } catch {
+    return rawUrl;
+  }
+}
+
+/** Result-strip / status-pill text for each capture state. */
+export function resultText(state: CaptureState): string {
+  switch (state) {
+    case "ready":
+      return "";
+    case "saving":
+      return "Saving…";
+    case "saved":
+      return "Saved";
+    case "duplicate":
+      return "Already saved";
+    case "failed":
+      return "Couldn’t save — try again";
+    case "not-capturable":
+      return "Can’t save this page";
+  }
 }

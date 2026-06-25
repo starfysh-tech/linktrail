@@ -1,5 +1,11 @@
 import { describe, it, expect } from "bun:test";
-import { isCapturable, buildPayload, mapResponseToState } from "../extension/src/capture";
+import {
+  isCapturable,
+  buildPayload,
+  mapResponseToState,
+  previewUrl,
+  resultText,
+} from "../extension/src/capture";
 
 describe("isCapturable", () => {
   it("is true for http and https pages", () => {
@@ -54,5 +60,26 @@ describe("mapResponseToState", () => {
     expect(mapResponseToState(401)).toBe("failed");
     expect(mapResponseToState(503)).toBe("failed");
     expect(mapResponseToState(500)).toBe("failed");
+  });
+});
+
+describe("previewUrl", () => {
+  it("drops the scheme and applies shared normalization (www./tracking)", () => {
+    expect(previewUrl("https://www.example.com/a/?utm_source=x")).toBe("example.com/a");
+    expect(previewUrl("http://Example.com/Path?id=7")).toBe("example.com/Path?id=7");
+  });
+
+  it("returns the input unchanged when it cannot be parsed", () => {
+    expect(previewUrl("not a url")).toBe("not a url");
+  });
+});
+
+describe("resultText", () => {
+  it("gives a distinct string per terminal state and is empty for ready", () => {
+    expect(resultText("ready")).toBe("");
+    expect(resultText("saved")).toBe("Saved");
+    expect(resultText("duplicate")).toBe("Already saved");
+    expect(resultText("not-capturable")).toBe("Can’t save this page");
+    expect(resultText("failed")).not.toBe("");
   });
 });

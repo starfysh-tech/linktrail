@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Linktrail</title>
+    <link rel="stylesheet" href="src/popup.css" />
+  </head>
+  <!-- The controller (popup.ts) swaps this body class through the six states:
+       state-ready | state-saving | state-saved | state-duplicate |
+       state-failed | state-not-capturable. All visual states are CSS-only. -->
+  <body class="state-ready">
+    <main class="popup">
+      <section class="page-card">
+        <img id="favicon" class="favicon" src="" alt="" />
+        <div class="page-meta">
+          <p id="title" class="title"></p>
+          <p id="url-preview" class="url-preview"></p>
+        </div>
+      </section>
+
+      <button id="save-btn" type="button" class="save-btn">Save</button>
+
+      <!-- Text set by the controller; visibility/colour driven by body state. -->
+      <div id="result-strip" class="result-strip" role="status" aria-live="polite"></div>
+
+      <footer class="footer">
+        <button id="open-feed" type="button" class="link">Feed</button>
+        <button id="open-settings" type="button" class="link">Settings</button>
+      </footer>
+    </main>
+
+    <script type="module" src="src/popup.ts"></script>
+  </body>
+</html>
