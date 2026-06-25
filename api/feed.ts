@@ -1,5 +1,11 @@
 // Explicit .js extension required for Node ESM on Vercel (see api/save.ts).
 import { sql } from "../lib/db.js";
+import { CORS_HEADERS, preflight } from "../lib/cors.js";
+
+/** CORS preflight (parity with save; harmless for direct RSS-reader fetches). */
+export async function OPTIONS(): Promise<Response> {
+  return preflight();
+}
 
 /**
  * RSS feed endpoint. The read token rides in the feed URL's query string (a
@@ -14,7 +20,7 @@ export async function GET(req: Request): Promise<Response> {
   if (token !== process.env.READ_TOKEN) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...CORS_HEADERS },
     });
   }
 
@@ -49,7 +55,7 @@ ${items}
 
   return new Response(rss, {
     status: 200,
-    headers: { "Content-Type": "application/rss+xml; charset=utf-8" },
+    headers: { "Content-Type": "application/rss+xml; charset=utf-8", ...CORS_HEADERS },
   });
 }
 

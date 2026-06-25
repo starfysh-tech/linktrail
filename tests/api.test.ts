@@ -22,11 +22,13 @@ if (!process.env.DATABASE_URL) {
 // Lazy imports so the DATABASE_URL fallback above is set before lib/db loads.
 let POST: (req: Request) => Promise<Response>;
 let GET: (req: Request) => Promise<Response>;
+let saveOPTIONS: (req: Request) => Promise<Response>;
 let sql: (typeof import("../lib/db"))["sql"];
 
 beforeAll(async () => {
   POST = (await import("../api/save")).POST;
   GET = (await import("../api/feed")).GET;
+  saveOPTIONS = (await import("../api/save")).OPTIONS;
   sql = (await import("../lib/db")).sql;
 });
 
@@ -49,6 +51,21 @@ describe("POST /api/save — auth (no DB)", () => {
       saveReq({ Authorization: "Bearer wrong" }, { url: "https://e.com", title: "t" }),
     );
     expect(res.status).toBe(401);
+  });
+});
+
+describe("CORS preflight (no DB)", () => {
+  it("save OPTIONS returns 204 with permissive CORS allowing Authorization", async () => {
+    const res = await saveOPTIONS(new Request("https://x/api/save", { method: "OPTIONS" }));
+    expect(res.status).toBe(204);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
+    expect(res.headers.get("Access-Control-Allow-Headers")).toContain("Authorization");
+  });
+
+  it("save error responses still carry the CORS origin header", async () => {
+    const res = await POST(saveReq({}, { url: "https://e.com", title: "t" }));
+    expect(res.status).toBe(401);
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 });
 

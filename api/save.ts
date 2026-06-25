@@ -3,7 +3,13 @@
 // imports at runtime. TS (bundler resolution) and Bun still map these to the .ts.
 import { sql } from "../lib/db.js";
 import { normalizeUrl } from "../lib/normalize.js";
+import { CORS_HEADERS, preflight } from "../lib/cors.js";
 import type { SaveRequest, SaveResponse } from "../lib/contract.js";
+
+/** CORS preflight — the extension's authorized POST is not a "simple" request. */
+export async function OPTIONS(): Promise<Response> {
+  return preflight();
+}
 
 /**
  * Save endpoint — the thinnest possible insert for Slice 1.
@@ -36,6 +42,6 @@ export async function POST(req: Request): Promise<Response> {
 function json(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
   });
 }
