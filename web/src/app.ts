@@ -14,6 +14,9 @@ import {
   sortItems,
   domainOf,
   relativeTime,
+  toJsonExport,
+  toBookmarkHtml,
+  toOpml,
   type DatePreset,
 } from "./view";
 import type { Item } from "../../lib/contract";
@@ -117,6 +120,16 @@ function row(item: Item, now: number): HTMLLIElement {
   return li;
 }
 
+/** Trigger a client-side file download of in-memory content (no server round-trip). */
+function download(filename: string, mime: string, content: string): void {
+  const url = URL.createObjectURL(new Blob([content], { type: mime }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function init(): void {
   token = resolveToken();
 
@@ -129,6 +142,18 @@ function init(): void {
   });
 
   $("search").addEventListener("input", render);
+
+  // Exports always cover the FULL history (allItems), not the filtered view.
+  const stamp = new Date().toISOString().slice(0, 10);
+  $("export-json").addEventListener("click", () =>
+    download(`linktrail-${stamp}.json`, "application/json", toJsonExport(allItems, new Date().toISOString())),
+  );
+  $("export-html").addEventListener("click", () =>
+    download(`linktrail-${stamp}.html`, "text/html", toBookmarkHtml(allItems)),
+  );
+  $("export-opml").addEventListener("click", () =>
+    download(`linktrail-${stamp}.opml`, "text/x-opml", toOpml(allItems)),
+  );
 
   for (const btn of document.querySelectorAll<HTMLButtonElement>(".preset")) {
     btn.addEventListener("click", () => {

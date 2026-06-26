@@ -8,6 +8,8 @@
     "test": "bun test",
     "migrate": "bun run scripts/migrate.ts",
     "reset": "bun run scripts/reset-items.ts",
+    "export": "bun run scripts/export.ts",
+    "import": "bun run scripts/import.ts",
     "build:ext": "vite build --config extension/vite.config.ts",
     "dev:ext": "vite --config extension/vite.config.ts",
     "build:web": "vite build --config web/vite.config.ts",

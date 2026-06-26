@@ -8,7 +8,11 @@ import {
   filterByDate,
   domainOf,
   relativeTime,
+  toJsonExport,
+  toBookmarkHtml,
+  toOpml,
   type DatePreset,
+  type ExportFile,
 } from "../web/src/view";
 import type { Item } from "../lib/contract";
 
@@ -96,6 +100,39 @@ describe("domainOf", () => {
   });
   it("falls back to raw input when unparseable", () => {
     expect(domainOf("not a url")).toBe("not a url");
+  });
+});
+
+describe("export serializers", () => {
+  const items = [
+    mk({ id: "1", url: "https://a.com/x", title: "A & B <tag>", capturedAt: "2026-06-20T00:00:00.000Z" }),
+    mk({ id: "2", url: "https://b.com/y", title: "Plain", capturedAt: "2026-06-21T00:00:00.000Z" }),
+  ];
+
+  it("toJsonExport produces a versioned, re-importable envelope", () => {
+    const parsed = JSON.parse(toJsonExport(items, "2026-06-25T12:00:00.000Z")) as ExportFile;
+    expect(parsed.linktrail).toBe(1);
+    expect(parsed.exportedAt).toBe("2026-06-25T12:00:00.000Z");
+    expect(parsed.items).toHaveLength(2);
+    expect(parsed.items[0]).toEqual({
+      url: "https://a.com/x",
+      title: "A & B <tag>",
+      capturedAt: "2026-06-20T00:00:00.000Z",
+    });
+  });
+
+  it("toBookmarkHtml emits a Netscape file with escaped titles and ADD_DATE", () => {
+    const html = toBookmarkHtml(items);
+    expect(html.startsWith("<!DOCTYPE NETSCAPE-Bookmark-file-1>")).toBe(true);
+    // Title is HTML-escaped; URL present; ADD_DATE is unix seconds.
+    const addDate = Math.floor(Date.parse("2026-06-20T00:00:00.000Z") / 1000);
+    expect(html).toContain(`<A HREF="https://a.com/x" ADD_DATE="${addDate}">A &amp; B &lt;tag&gt;</A>`);
+  });
+
+  it("toOpml emits type=link outlines with escaped attributes", () => {
+    const opml = toOpml(items);
+    expect(opml).toContain('<opml version="2.0">');
+    expect(opml).toContain('<outline text="A &amp; B &lt;tag&gt;" type="link" url="https://a.com/x"/>');
   });
 });
 

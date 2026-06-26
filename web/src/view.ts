@@ -75,6 +75,83 @@ export function domainOf(url: string): string {
   }
 }
 
+/**
+ * The portable export shape — written by both the in-app JSON export and the CLI
+ * `scripts/export.ts`, and read back by `scripts/import.ts`. Intentionally drops
+ * `id` and `normalized_url`: ids aren't referenced anywhere external, and the
+ * normalized identity is recomputed on import via shared `lib/normalize`.
+ */
+export interface ExportFile {
+  linktrail: number; // schema version
+  exportedAt: string; // ISO-8601
+  items: { url: string; title: string; capturedAt: string }[];
+}
+
+/** Serialize the history to the portable JSON export (re-importable, lossless). */
+export function toJsonExport(items: Item[], exportedAt: string): string {
+  const payload: ExportFile = {
+    linktrail: 1,
+    exportedAt,
+    items: items.map((i) => ({ url: i.url, title: i.title, capturedAt: i.capturedAt })),
+  };
+  return JSON.stringify(payload, null, 2);
+}
+
+/** Minimal HTML-attribute/text escaping for the bookmark export. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Serialize the history to the Netscape bookmark HTML format — the de-facto
+ * interop format that browsers, Pocket, Instapaper, etc. import. `ADD_DATE` is
+ * unix seconds (omitted when the timestamp won't parse).
+ */
+export function toBookmarkHtml(items: Item[]): string {
+  const rows = items.map((i) => {
+    const secs = Math.floor(Date.parse(i.capturedAt) / 1000);
+    const addDate = Number.isNaN(secs) ? "" : ` ADD_DATE="${secs}"`;
+    return `    <DT><A HREF="${escapeHtml(i.url)}"${addDate}>${escapeHtml(i.title || i.url)}</A>`;
+  });
+  return [
+    "<!DOCTYPE NETSCAPE-Bookmark-file-1>",
+    '<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">',
+    "<TITLE>Bookmarks</TITLE>",
+    "<H1>Linktrail</H1>",
+    "<DL><p>",
+    ...rows,
+    "</DL><p>",
+    "",
+  ].join("\n");
+}
+
+/**
+ * Serialize the history to OPML 2.0 as `type="link"` outlines. Note: OPML is
+ * conventionally a *feed-subscription* format, so some readers may try to
+ * subscribe to each URL rather than treat it as a saved link — included by
+ * request for RSS-ecosystem interop.
+ */
+export function toOpml(items: Item[]): string {
+  const rows = items.map(
+    (i) =>
+      `    <outline text="${escapeHtml(i.title || i.url)}" type="link" url="${escapeHtml(i.url)}"/>`,
+  );
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<opml version="2.0">',
+    "  <head><title>Linktrail</title></head>",
+    "  <body>",
+    ...rows,
+    "  </body>",
+    "</opml>",
+    "",
+  ].join("\n");
+}
+
 /** Compact relative time ("just now", "5m ago", "3h ago", "2d ago"); date past a week. */
 export function relativeTime(capturedAt: string, now: number): string {
   const diff = now - Date.parse(capturedAt);

@@ -45,6 +45,17 @@ trust.
 - **Neon** runs comfortably on its **free tier** for a personal reading history.
 - **Vercel** runs on the **Hobby** plan for personal, non-commercial use.
 
+## Back up your history
+
+Your saved pages live only in your Neon database, so keep your own copy:
+
+- **In the app:** open the review app (the popup's **History** chip) and use the
+  **Export** buttons — **JSON** (re-importable), **HTML bookmarks** (browsers and
+  read-later apps import these), or **OPML**.
+- **From the repo (full backup / migrating backends):** `bun run export` writes a
+  JSON backup; `bun run import <file.json>` restores it into any Linktrail backend
+  (idempotent, so it merges safely). See [`dev-setup.md`](dev-setup.md).
+
 ## Security
 
 - **Keep both tokens secret.** Treat them like passwords.

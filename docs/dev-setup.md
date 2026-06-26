@@ -80,6 +80,26 @@ extension popup's **History** chip (it deep-links `…/app/?token=<read>`), or p
 your read token into the gate. The app is read-only and only ever holds the read
 token; it fetches `/api/items` once and does search + date-filtering client-side.
 
+## Backup & data export
+
+Two ways to get your history out — the history is the whole product, so back it up.
+
+- **CLI (full backup / backend-to-backend migration):**
+  ```sh
+  bun run export [outfile]    # default linktrail-backup.json
+  bun run import <file.json>  # idempotent restore/merge
+  ```
+  `export` dumps every row to a portable JSON envelope; `import` re-normalizes via
+  shared `lib/normalize` and upserts (`ON CONFLICT DO NOTHING`), so it's safe to
+  re-run and works for moving between backends. `import` ensures the schema first,
+  so it can seed a brand-new database.
+- **In-app (portability):** the review app's **Export** buttons download your full
+  history as **JSON** (re-importable via `bun run import`), **HTML bookmarks**
+  (Netscape format — browsers/Pocket/Instapaper import it), or **OPML**.
+
+> Defense in depth: enable Neon's point-in-time recovery where your plan allows —
+> but don't rely on it alone; keep your own JSON backup.
+
 ## Verify the capture spine (Slice 1)
 
 1. Navigate to any normal `https://` page.
