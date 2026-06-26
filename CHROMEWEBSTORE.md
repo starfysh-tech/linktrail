@@ -47,6 +47,9 @@ PERMISSIONS
 • "Notifications" — shows a brief message if a save needs your attention or when queued pages finish syncing, so you're never left guessing.
 • "Alarms" — lets Linktrail periodically retry saves that were queued while you were offline, even when the popup is closed.
 
+SETTING UP YOUR BACKEND
+Linktrail needs a backend you run yourself — there is no shared Linktrail server. You can deploy one (Vercel + Neon Postgres) in a handful of clicks; the self-hosting guide walks you through it: https://github.com/starfysh-tech/linktrail/blob/main/docs/self-hosting.md
+
 SUPPORT
 Questions, bugs, or suggestions? Open an issue on the project's GitHub repository or email the address on this listing.
 
@@ -188,6 +191,7 @@ and published builds.
 | 0.10.0 | 2026-06-25 | Offline retry queue: temporary failures are parked in `chrome.storage.local` and auto-retried (new `alarms` permission). | Draft |
 | 0.11.0 | 2026-06-25 | Optional host access requested at runtime for the user's backend origin, so CORS-less self-hosted backends work (additive; CORS fallback retained). | Draft |
 | 0.12.0 | 2026-06-25 | Popup "History" chip opening a private, read-only review web app (search/browse full history) at `/app`, backed by new `GET /api/items`. No new permission. | Draft |
+| 0.13.0 | 2026-06-25 | Options page links to the self-hosting guide (Deploy-to-Vercel backend setup); no permission change. | Draft |
 
 ## Review Notes
 

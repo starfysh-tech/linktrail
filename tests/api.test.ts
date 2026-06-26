@@ -30,6 +30,8 @@ let statusGET: (req: Request) => Promise<Response>;
 let statusOPTIONS: (req: Request) => Promise<Response>;
 let itemsGET: (req: Request) => Promise<Response>;
 let sql: (typeof import("../lib/db"))["sql"];
+let ensureSchema!: (typeof import("../lib/schema"))["ensureSchema"];
+let resetSchemaMemoForTests!: (typeof import("../lib/schema"))["resetSchemaMemoForTests"];
 
 beforeAll(async () => {
   POST = (await import("../api/save")).POST;
@@ -41,6 +43,9 @@ beforeAll(async () => {
   statusOPTIONS = (await import("../api/status")).OPTIONS;
   itemsGET = (await import("../api/items")).GET;
   sql = (await import("../lib/db")).sql;
+  ensureSchema = (await import("../lib/schema")).ensureSchema;
+  resetSchemaMemoForTests = (await import("../lib/schema")).resetSchemaMemoForTests;
+  ({ ensureSchema, resetSchemaMemoForTests } = await import("../lib/schema"));
 });
 
 function statusReq(token: string | undefined, url: string | undefined): Request {
@@ -336,5 +341,47 @@ describe("normalization, dedupe & title fallback (DB-gated)", () => {
     expect(rows[0].title).toBe("linktrail-dedupe.example");
 
     await sql`DELETE FROM saved_items WHERE original_url = ${url}`;
+  });
+});
+
+describe("ensureSchema — memoization (no DB)", () => {
+  it("invokes the injected runner exactly once across concurrent + repeat calls", async () => {
+    resetSchemaMemoForTests();
+    let calls = 0;
+    const runner = async () => {
+      calls++;
+    };
+
+    // Fire several concurrently, then a couple more after they settle.
+    await Promise.all([ensureSchema(runner), ensureSchema(runner), ensureSchema(runner)]);
+    await ensureSchema(runner);
+    await ensureSchema(runner);
+
+    expect(calls).toBe(1);
+  });
+
+  it("retries on the next call after the runner rejects (memo cleared on failure)", async () => {
+    resetSchemaMemoForTests();
+    let calls = 0;
+    const failing = async () => {
+      calls++;
+      throw new Error("boom");
+    };
+
+    await expect(ensureSchema(failing)).rejects.toThrow("boom");
+    await expect(ensureSchema(failing)).rejects.toThrow("boom");
+    expect(calls).toBe(2); // a transient failure does not poison the instance
+  });
+});
+
+describe("ensureSchema — real DDL (DB-gated)", () => {
+  dbit("creates saved_items and is idempotent on a second call", async () => {
+    resetSchemaMemoForTests();
+    await ensureSchema();
+    const exists = await sql`SELECT to_regclass('saved_items') AS reg`;
+    expect(exists[0].reg).not.toBeNull();
+
+    // A second call must not throw (CREATE ... IF NOT EXISTS + memoization).
+    await ensureSchema();
   });
 });

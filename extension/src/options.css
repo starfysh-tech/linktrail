@@ -185,6 +185,19 @@ button.primary:hover {
   color: var(--fail);
 }
 
+/* Quiet secondary link to the self-hosting guide — muted, not a button. */
+.deploy-link {
+  display: inline-block;
+  margin-top: 14px;
+  font-weight: 600;
+  color: var(--on-3);
+  text-decoration: none;
+}
+.deploy-link:hover {
+  color: var(--on-2);
+  text-decoration: underline;
+}
+
 .hint {
   color: var(--on-2);
   margin: 0 0 10px;

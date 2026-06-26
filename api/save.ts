@@ -2,6 +2,7 @@
 // ESM ("type":"module"), and Node ESM does not resolve extensionless relative
 // imports at runtime. TS (bundler resolution) and Bun still map these to the .ts.
 import { sql } from "../lib/db.js";
+import { ensureSchema } from "../lib/schema.js";
 import { normalizeUrl } from "../lib/normalize.js";
 import { CORS_HEADERS, preflight } from "../lib/cors.js";
 import type { SaveRequest, SaveResponse } from "../lib/contract.js";
@@ -50,6 +51,10 @@ export async function POST(req: Request): Promise<Response> {
   const normalized = normalizeUrl(url);
   // Title fallback: empty/whitespace title becomes the normalized host.
   const finalTitle = (title ?? "").trim() || new URL(normalized).hostname;
+
+  // Lazily ensure the schema (incl. the unique index `ON CONFLICT` relies on)
+  // so a brand-new self-hosted database needs no manual migration.
+  await ensureSchema();
 
   const inserted = await sql`
     INSERT INTO saved_items (original_url, normalized_url, title)

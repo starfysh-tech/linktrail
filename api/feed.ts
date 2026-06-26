@@ -1,5 +1,6 @@
 // Explicit .js extension required for Node ESM on Vercel (see api/save.ts).
 import { sql } from "../lib/db.js";
+import { ensureSchema } from "../lib/schema.js";
 import { CORS_HEADERS, preflight } from "../lib/cors.js";
 
 /** CORS preflight (parity with save; harmless for direct RSS-reader fetches). */
@@ -23,6 +24,10 @@ export async function GET(req: Request): Promise<Response> {
       headers: { "Content-Type": "application/json", ...CORS_HEADERS },
     });
   }
+
+  // Lazily ensure the schema so a fresh self-hosted database serves an (empty)
+  // feed instead of erroring on a missing table.
+  await ensureSchema();
 
   const rows = await sql`
     SELECT id, original_url, normalized_url, title, captured_at

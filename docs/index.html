@@ -125,6 +125,20 @@
     </div>
   </section>
 
+  <section id="self-host">
+    <h2>Run your own backend</h2>
+    <div class="card" style="display:grid; gap:14px;">
+      <p style="margin:0; font-size:14px; line-height:1.55; color:var(--on-2);">There's no shared server — Linktrail is yours end to end. Deploy your own backend to Vercel in a few clicks: it clones the repo, adds a free Neon database, and asks for two secrets you generate. The schema sets itself up on first use; then point the extension at your new URL.</p>
+      <div>
+        <a class="cta" href="https://vercel.com/new/clone?repository-url=https://github.com/starfysh-tech/linktrail&project-name=linktrail&repository-name=linktrail&env=WRITE_TOKEN,READ_TOKEN&envDescription=Two%20unguessable%20secrets%20%E2%80%94%20generate%20each%20with%20%60openssl%20rand%20-hex%2032%60&envLink=https://github.com/starfysh-tech/linktrail/blob/main/docs/self-hosting.md&products=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D">
+          <svg viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3z"/></svg>
+          Deploy to Vercel
+        </a>
+        <span class="sub-cta">Free Neon + Vercel Hobby · <a href="self-hosting.md">read the self-hosting guide</a></span>
+      </div>
+    </div>
+  </section>
+
   <footer>
     <span>© Linktrail · A personal reading-history utility.</span>
     <span><a href="privacy.html">Privacy Policy</a></span>

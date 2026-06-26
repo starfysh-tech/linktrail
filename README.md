@@ -10,6 +10,7 @@ with an Apple-native graphite-and-warm-amber "glass" look.
 
 **Links:** [Landing page](https://starfysh-tech.github.io/linktrail/) ·
 [History app](https://linktrail-alpha.vercel.app/app/) (read-token gated) ·
+[Self-hosting guide](docs/self-hosting.md) ·
 [Privacy policy](https://starfysh-tech.github.io/linktrail/privacy.html) ·
 [Web Store listing prep](CHROMEWEBSTORE.md)
 
@@ -67,7 +68,7 @@ tests/       The test seams (see Test)
 docs/
   prd-v1.md         authoritative PRD
   dev-setup.md       full setup + manual verify flow
-  issues/01–06       the implementation slices
+  issues/01–07       the implementation slices
 ```
 
 ## Setup
@@ -94,6 +95,18 @@ bun run migrate
 
 See [`docs/dev-setup.md`](docs/dev-setup.md) for the full setup and manual
 verification flow.
+
+## Self-hosting
+
+Linktrail has no shared server — you run your **own** private backend. Click
+Deploy to clone the repo into your Vercel + Git, add the Neon integration (which
+sets `DATABASE_URL`), and paste two generated tokens (`openssl rand -hex 32`) as
+`WRITE_TOKEN` and `READ_TOKEN`. The schema is created automatically on first use,
+then point the extension's options at your new URL.
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/starfysh-tech/linktrail&project-name=linktrail&repository-name=linktrail&env=WRITE_TOKEN,READ_TOKEN&envDescription=Two%20unguessable%20secrets%20%E2%80%94%20generate%20each%20with%20%60openssl%20rand%20-hex%2032%60&envLink=https://github.com/starfysh-tech/linktrail/blob/main/docs/self-hosting.md&products=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D)
+
+Full walkthrough: [`docs/self-hosting.md`](docs/self-hosting.md).
 
 ## Develop
 
@@ -155,7 +168,7 @@ docs are excluded via `.vercelignore`. Production is aliased to
 - **Git:** commit and push directly to `main` (solo personal project; no feature
   branches or PRs).
 - **Versioning:** bump the minor per slice (`0.<slice>.0`), keeping
-  `extension/manifest.config.ts` and `package.json` in sync. Current: **0.12.0**.
+  `extension/manifest.config.ts` and `package.json` in sync. Current: **0.13.0**.
 - **Secrets:** never committed — `.env.local` and `.secrets.local` are gitignored.
 - **Auth:** two separate tokens — a bearer **write token** (save endpoint) and a
   distinct unguessable **read token** (in the feed URL).

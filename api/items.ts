@@ -1,5 +1,6 @@
 // Explicit .js extensions required for Node ESM on Vercel (see api/save.ts).
 import { sql } from "../lib/db.js";
+import { ensureSchema } from "../lib/schema.js";
 import { CORS_HEADERS, preflight } from "../lib/cors.js";
 import type { Item } from "../lib/contract.js";
 
@@ -22,6 +23,10 @@ export async function GET(req: Request): Promise<Response> {
   if (token !== process.env.READ_TOKEN) {
     return json({ error: "unauthorized" }, 401);
   }
+
+  // Lazily ensure the schema so a fresh self-hosted database returns an empty
+  // history instead of erroring on a missing table.
+  await ensureSchema();
 
   const rows = await sql`
     SELECT id, original_url, title, captured_at

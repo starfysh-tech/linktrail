@@ -18,6 +18,11 @@ bun run migrate                 # create the saved_items table in Neon
 > The `test`/`migrate` scripts load `.env.local` explicitly via `bun --env-file`
 > (Bun does not auto-load `.env.local` under its test env convention).
 
+> Self-hosting end users do **not** run `bun run migrate` — a deployed backend
+> auto-creates its schema via `ensureSchema` on the first request (see
+> [`self-hosting.md`](self-hosting.md)). `bun run migrate` is a dev tool for the
+> backfill/dedupe pass against your own database.
+
 ## Tests
 
 ```sh
