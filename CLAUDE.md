@@ -9,7 +9,8 @@ into a personal, RSS-backed reading history, with a Vercel-hosted backend and a
 Neon Postgres datastore. Apple-native ("Safari-adjacent glass") look and feel.
 
 The project is in the build-out phase. The authoritative spec lives in:
-- `@docs/prd-v1.md` — full PRD (problem, user stories, decisions, test seams, scope)
+- `docs/prd-v1.md` — full PRD (problem, user stories, decisions, test seams, scope).
+  Read it on demand; it's intentionally not auto-imported (keeps it out of every session).
 - `docs/issues/01–08` — implementation slices. `01–05` are v1 (dependency order
   `1 → {2,3,4} → 5`); `06` review UI, `07` self-hosting, `08` zero-input setup are
   post-v1 enhancements. Each is a demoable vertical slice.
@@ -23,7 +24,9 @@ These were deliberately chosen — do not reach for the more "default" option:
   as first-party products — don't suggest them.
 - **Extension UI = vanilla HTML/CSS + TypeScript**, bundled with Vite +
   `@crxjs/vite-plugin`. NO React or other UI framework. Glass via CSS
-  `backdrop-filter`; single accent `#0A84FF`; light/dark parity is mandatory.
+  `backdrop-filter` over a graphite material; a single warm-amber accent
+  (systemOrange family, ~`#ff9f0a` — NOT blue) is the only saturated color.
+  Graphite stays graphite in both light and dark (parity is mandatory).
 - **Repo layout = flat single repo**: backend functions, a shared `lib/`, and the
   extension as sibling top-level concerns. NOT a workspaces monorepo.
 
@@ -42,13 +45,25 @@ imports. Extensionless imports still pass Bun + `tsc` (bundler resolution), so t
 break only shows up as a 500 in production — always smoke-test endpoints after a
 deploy.
 
+## Code patterns
+
+- **Pure decision seam + impure glue.** Keep pure, testable logic — decisions,
+  transforms, serializers — in dedicated modules (`extension/src/capture.ts`,
+  `web/src/view.ts`, `lib/normalize.ts`, `lib/config.ts` `pickTokens`) free of
+  `chrome.*`, `fetch`, DOM, and DB. Side effects live in thin wiring
+  (`sw.ts`, `popup.ts`, `options.ts`, `web/src/app.ts`, `api/*`). New behavior
+  goes in the pure seam **with a unit test**; the glue just calls it.
+- **Shared wire shapes live in `lib/contract.ts`** — change request/response types
+  there once, for both sender and receiver, never per side.
+
 ## Conventions
 
 - **Git workflow: commit and push directly to `main`** (solo personal project; no
   feature branches or PRs required).
-- **Versioning: bump the minor per slice** (`0.<slice>.0`), keeping
-  `extension/manifest.config.ts` and `package.json` in sync. Do it in the slice's
-  commit so Chrome sees a new version on reload.
+- **Versioning: bump the extension version when the extension changes**, keeping
+  `extension/manifest.config.ts` and `package.json` in sync (in that commit, so
+  Chrome sees a new version on reload). Backend-only, web-app-only, or docs-only
+  changes don't bump.
 - **Secrets/local dev**: pull env with `vercel env pull .env.local`. `.env.local`
   is gitignored. Expected vars: `DATABASE_URL` (Neon), write token, read token.
   Never commit secrets.
