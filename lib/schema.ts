@@ -1,4 +1,6 @@
-import { sql } from "./db";
+// Explicit .js extension: this is deployed code (imported by api/*), and Node
+// ESM on Vercel does not resolve extensionless relative imports at runtime.
+import { sql } from "./db.js";
 
 /**
  * Lazy, idempotent schema bootstrap so a brand-new (empty) Neon database works
