@@ -26,12 +26,20 @@ These were deliberately chosen — do not reach for the more "default" option:
 - **Repo layout = flat single repo**: backend functions, a shared `lib/`, and the
   extension as sibling top-level concerns. NOT a workspaces monorepo.
 
-## Critical gotcha
+## Critical gotchas
 
 URL **normalization is shared code** imported by BOTH the extension and the
 backend (`lib/`). The two sides MUST run identical normalization — if they
 diverge, they compute different identities and create phantom duplicate captures.
 Never fork or reimplement normalization per side.
+
+**Vercel ESM `.js` extensions** — every relative import in *deployed* code must
+carry an explicit `.js` extension (e.g. `import { sql } from "./db.js"`), because
+Node ESM on Vercel won't resolve extensionless relative imports at runtime. This
+applies to `api/*` **and** any `lib/` file reached from them, including `lib → lib`
+imports. Extensionless imports still pass Bun + `tsc` (bundler resolution), so the
+break only shows up as a 500 in production — always smoke-test endpoints after a
+deploy.
 
 ## Conventions
 

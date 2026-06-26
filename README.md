@@ -149,9 +149,12 @@ Only `api/` (plus the shared `lib/`) deploys — the extension, tests, scripts, 
 docs are excluded via `.vercelignore`. Production is aliased to
 **`linktrail-alpha.vercel.app`**.
 
-> **Vercel ESM gotcha:** under Node ESM on Vercel, relative imports in `api/*`
-> must use explicit `.js` extensions (e.g. `import { ... } from "../lib/normalize.js"`),
-> even though the source files are `.ts`.
+> **Vercel ESM gotcha:** under Node ESM on Vercel, relative imports in **all
+> deployed code** must use explicit `.js` extensions (e.g. `import { ... } from
+> "../lib/normalize.js"`), even though the source files are `.ts`. This covers
+> `api/*` **and** any `lib/` file reached from them — including `lib → lib`
+> imports (e.g. `lib/schema.ts` importing `./db.js`). An extensionless relative
+> import resolves under Bun/tsc but crashes the function at runtime on Vercel.
 
 ## Endpoints
 
