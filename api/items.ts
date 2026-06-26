@@ -1,6 +1,7 @@
 // Explicit .js extensions required for Node ESM on Vercel (see api/save.ts).
 import { sql } from "../lib/db.js";
 import { ensureSchema } from "../lib/schema.js";
+import { getTokens } from "../lib/config.js";
 import { CORS_HEADERS, preflight } from "../lib/cors.js";
 import type { Item } from "../lib/contract.js";
 
@@ -20,7 +21,8 @@ export async function OPTIONS(): Promise<Response> {
  */
 export async function GET(req: Request): Promise<Response> {
   const token = new URL(req.url).searchParams.get("token");
-  if (token !== process.env.READ_TOKEN) {
+  const { readToken } = await getTokens();
+  if (!readToken || token !== readToken) {
     return json({ error: "unauthorized" }, 401);
   }
 

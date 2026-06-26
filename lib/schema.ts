@@ -27,6 +27,18 @@ async function runDdl(): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS saved_items_normalized_url_key
     ON saved_items (normalized_url)
   `;
+  // Single-row config holding the backend's tokens for env-less (zero-input)
+  // deploys. The id=1 singleton + CHECK means there is at most one row, so the
+  // first-run claim is an atomic INSERT ... ON CONFLICT (id) DO NOTHING.
+  await sql`
+    CREATE TABLE IF NOT EXISTS config (
+      id          int PRIMARY KEY DEFAULT 1,
+      write_token text NOT NULL,
+      read_token  text NOT NULL,
+      claimed_at  timestamptz NOT NULL DEFAULT now(),
+      CONSTRAINT config_singleton CHECK (id = 1)
+    )
+  `;
 }
 
 // Memo: the DDL runs at most once per process. We cache the in-flight promise

@@ -2,6 +2,7 @@
 import { sql } from "../lib/db.js";
 import { ensureSchema } from "../lib/schema.js";
 import { normalizeUrl } from "../lib/normalize.js";
+import { getTokens } from "../lib/config.js";
 import { CORS_HEADERS, preflight } from "../lib/cors.js";
 import type { StatusResponse } from "../lib/contract.js";
 
@@ -21,8 +22,9 @@ export async function OPTIONS(): Promise<Response> {
  */
 export async function GET(req: Request): Promise<Response> {
   // Auth before any DB access so an unauthorized caller never reaches the datastore.
+  const { writeToken } = await getTokens();
   const auth = req.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.WRITE_TOKEN}`) {
+  if (!writeToken || auth !== `Bearer ${writeToken}`) {
     return json({ saved: false }, 401);
   }
 

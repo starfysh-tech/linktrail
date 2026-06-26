@@ -98,13 +98,15 @@ verification flow.
 
 ## Self-hosting
 
-Linktrail has no shared server — you run your **own** private backend. Click
-Deploy to clone the repo into your Vercel + Git, add the Neon integration (which
-sets `DATABASE_URL`), and paste two generated tokens (`openssl rand -hex 32`) as
-`WRITE_TOKEN` and `READ_TOKEN`. The schema is created automatically on first use,
-then point the extension's options at your new URL.
+Linktrail has no shared server — you run your **own** private backend.
+**Zero-input deploy:** click Deploy to clone the repo into your Vercel + Git and
+add the Neon integration (which sets `DATABASE_URL`) — no token fields to fill.
+Then open `https://your-project.vercel.app/api/setup` **right away** and click
+*Generate my tokens* (the first visitor claims the backend). Paste the shown
+Backend URL + write token into the extension's options. The schema is created
+automatically on first use.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/starfysh-tech/linktrail&project-name=linktrail&repository-name=linktrail&env=WRITE_TOKEN,READ_TOKEN&envDescription=Two%20unguessable%20secrets%20%E2%80%94%20generate%20each%20with%20%60openssl%20rand%20-hex%2032%60&envLink=https://github.com/starfysh-tech/linktrail/blob/main/docs/self-hosting.md&products=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/starfysh-tech/linktrail&project-name=linktrail&repository-name=linktrail&products=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D)
 
 Full walkthrough: [`docs/self-hosting.md`](docs/self-hosting.md).
 

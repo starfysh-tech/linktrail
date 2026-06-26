@@ -32,6 +32,10 @@ let itemsGET: (req: Request) => Promise<Response>;
 let sql: (typeof import("../lib/db"))["sql"];
 let ensureSchema!: (typeof import("../lib/schema"))["ensureSchema"];
 let resetSchemaMemoForTests!: (typeof import("../lib/schema"))["resetSchemaMemoForTests"];
+let pickTokens!: (typeof import("../lib/config"))["pickTokens"];
+let resetTokensMemoForTests!: (typeof import("../lib/config"))["resetTokensMemoForTests"];
+let setupPOST: (req: Request) => Promise<Response>;
+let setupGET: () => Promise<Response>;
 
 beforeAll(async () => {
   POST = (await import("../api/save")).POST;
@@ -45,6 +49,10 @@ beforeAll(async () => {
   sql = (await import("../lib/db")).sql;
   ensureSchema = (await import("../lib/schema")).ensureSchema;
   resetSchemaMemoForTests = (await import("../lib/schema")).resetSchemaMemoForTests;
+  pickTokens = (await import("../lib/config")).pickTokens;
+  resetTokensMemoForTests = (await import("../lib/config")).resetTokensMemoForTests;
+  setupPOST = (await import("../api/setup")).POST;
+  setupGET = (await import("../api/setup")).GET;
   ({ ensureSchema, resetSchemaMemoForTests } = await import("../lib/schema"));
 });
 
@@ -259,6 +267,67 @@ describe("GET /api/items — full history (DB-gated)", () => {
     expect(Number.isNaN(Date.parse(ours[0].capturedAt))).toBe(false);
 
     await sql`DELETE FROM saved_items WHERE original_url IN (${older}, ${newer})`;
+  });
+});
+
+describe("pickTokens — env precedence (no DB)", () => {
+  it("env tokens win over the DB row", () => {
+    expect(pickTokens("ew", "er", { write_token: "dw", read_token: "dr" })).toEqual({
+      writeToken: "ew",
+      readToken: "er",
+    });
+  });
+  it("falls back to the DB row when env is absent", () => {
+    expect(pickTokens(undefined, undefined, { write_token: "dw", read_token: "dr" })).toEqual({
+      writeToken: "dw",
+      readToken: "dr",
+    });
+  });
+  it("is undefined when neither env nor DB provides a token", () => {
+    expect(pickTokens(undefined, undefined, null)).toEqual({
+      writeToken: undefined,
+      readToken: undefined,
+    });
+  });
+});
+
+describe("GET /api/setup (no DB)", () => {
+  it("serves an HTML setup page", async () => {
+    const res = await setupGET();
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/html");
+  });
+});
+
+describe("POST /api/setup — first-run claim (DB-gated)", () => {
+  dbit("claims tokens once on an env-less backend, then refuses", async () => {
+    // Force the env-less path and a clean, unclaimed config row.
+    const w = process.env.WRITE_TOKEN;
+    const r = process.env.READ_TOKEN;
+    delete process.env.WRITE_TOKEN;
+    delete process.env.READ_TOKEN;
+    resetTokensMemoForTests();
+    await sql`DELETE FROM config WHERE id = 1`;
+
+    try {
+      const res = await setupPOST(new Request("https://x/api/setup", { method: "POST" }));
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { writeToken: string; feedUrl: string };
+      expect(typeof body.writeToken).toBe("string");
+      expect(body.writeToken.length).toBeGreaterThan(20);
+      expect(body.feedUrl).toContain("/api/feed?token=");
+
+      // A second claim must NOT reveal tokens (already claimed).
+      const res2 = await setupPOST(new Request("https://x/api/setup", { method: "POST" }));
+      expect(res2.status).toBe(409);
+      expect((await res2.json()) as { error: string }).toEqual({ error: "already-claimed" });
+    } finally {
+      // Restore env + memo so the rest of the suite uses the env tokens again.
+      await sql`DELETE FROM config WHERE id = 1`;
+      resetTokensMemoForTests();
+      if (w !== undefined) process.env.WRITE_TOKEN = w;
+      if (r !== undefined) process.env.READ_TOKEN = r;
+    }
   });
 });
 

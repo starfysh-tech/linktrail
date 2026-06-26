@@ -1,6 +1,7 @@
 // Explicit .js extension required for Node ESM on Vercel (see api/save.ts).
 import { sql } from "../lib/db.js";
 import { ensureSchema } from "../lib/schema.js";
+import { getTokens } from "../lib/config.js";
 import { CORS_HEADERS, preflight } from "../lib/cors.js";
 
 /** CORS preflight (parity with save; harmless for direct RSS-reader fetches). */
@@ -18,7 +19,8 @@ export async function GET(req: Request): Promise<Response> {
 
   // Auth before DB access: an unauthorized caller never reaches the datastore.
   const token = url.searchParams.get("token");
-  if (token !== process.env.READ_TOKEN) {
+  const { readToken } = await getTokens();
+  if (!readToken || token !== readToken) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json", ...CORS_HEADERS },
