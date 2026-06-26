@@ -49,11 +49,14 @@ api/         Vercel Functions (deployed)
   verify.ts  GET  — health/connectivity check
   status.ts  GET  — is this URL already saved? (popup "already saved" hint)
   items.ts   GET  — full history as JSON, read-token guarded (review app)
+  setup.ts   GET/POST — first-run token reveal (zero-input self-host deploy)
 lib/         Shared code (imported by api/, extension/, web/)
   normalize.ts  canonical URL identity — shared by ALL sides
   contract.ts   request/response shapes
   cors.ts       CORS handling
   db.ts         Neon HTTP-driver access
+  schema.ts     lazy, idempotent ensureSchema (auto-migrate on first use)
+  config.ts     token resolution (env var > DB-claimed) + first-run claim
   load-env.ts   loads .env.local + .secrets.local for scripts/tests
 extension/   MV3 extension (Vite + @crxjs/vite-plugin)
   manifest.config.ts            manifest (pinned key → stable extension ID)
@@ -62,13 +65,16 @@ extension/   MV3 extension (Vite + @crxjs/vite-plugin)
 web/         Review app — vanilla Vite, served at /app/ (same origin, deployed)
   index.html, src/{app,view}.ts + app.css
 scripts/
-  migrate.ts        create the saved_items table
+  migrate.ts        create the saved_items table (+ dev backfill/dedupe)
   reset-items.ts    clear saved items
+  export.ts         back up full history to JSON
+  import.ts         restore/merge a JSON backup (idempotent)
 tests/       The test seams (see Test)
 docs/
   prd-v1.md         authoritative PRD
   dev-setup.md       full setup + manual verify flow
-  issues/01–07       the implementation slices
+  self-hosting.md    one-click self-host guide
+  issues/01–08       the implementation slices
 ```
 
 ## Setup
@@ -167,6 +173,7 @@ docs are excluded via `.vercelignore`. Production is aliased to
 | `GET`  | `/api/verify` | `Authorization: Bearer <WRITE_TOKEN>` — health / connectivity check |
 | `GET`  | `/api/status?url=<url>` | `Authorization: Bearer <WRITE_TOKEN>` — is this URL already saved? |
 | `GET`  | `/api/items?token=<READ_TOKEN>` | read token in query string — full history as JSON (review app) |
+| `GET`/`POST` | `/api/setup` | none — first-run token reveal for env-less deploys (`POST` claims once; no-op if env tokens are set) |
 
 ## Conventions
 

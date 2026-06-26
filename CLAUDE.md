@@ -10,8 +10,9 @@ Neon Postgres datastore. Apple-native ("Safari-adjacent glass") look and feel.
 
 The project is in the build-out phase. The authoritative spec lives in:
 - `@docs/prd-v1.md` — full PRD (problem, user stories, decisions, test seams, scope)
-- `docs/issues/01–05` — the five implementation slices, in dependency order
-  (`1 → {2,3,4} → 5`). Build in that order; each is a demoable vertical slice.
+- `docs/issues/01–08` — implementation slices. `01–05` are v1 (dependency order
+  `1 → {2,3,4} → 5`); `06` review UI, `07` self-hosting, `08` zero-input setup are
+  post-v1 enhancements. Each is a demoable vertical slice.
 
 ## Locked technical decisions (don't substitute alternatives)
 
@@ -56,10 +57,16 @@ deploy.
 
 ## Testing seams (the only places to test — see PRD for detail)
 
-1. **Backend HTTP endpoints** (integration) — drive save/feed/verify as black
-   boxes against a test Neon database.
+1. **Backend HTTP endpoints** (integration) — drive save/feed/verify/status/items/
+   setup as black boxes against a test Neon database (DB tests gated behind
+   `RUN_DB_TESTS`). Pure helpers behind them (`lib/config` `pickTokens`,
+   `lib/schema` memoization) are unit-tested without a DB.
 2. **`lib/normalize`** (unit) — combinatorial URL cases; shared by both sides.
 3. **Extension capture decisions** (unit) — pure functions (is-capturable, payload
-   assembly, response→state mapping) with `chrome.*` and `fetch` mocked.
+   assembly, response→state mapping, queue decisions) with `chrome.*` and `fetch`
+   mocked.
+4. **Web review-app decisions** (`web/src/view.ts`, unit) — search/sort/date-filter,
+   token parse, auth-state, and the JSON/bookmark/OPML export serializers.
 
-Test external behavior, not implementation details. No E2E/visual tests in v1.
+Test external behavior, not implementation details. Impure glue (service worker,
+popup, options, queue, web app wiring) is manual-verify. No E2E/visual tests.

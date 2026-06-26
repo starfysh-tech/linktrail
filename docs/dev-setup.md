@@ -49,6 +49,7 @@ The extension is excluded via `.vercelignore`. Endpoints:
 - `GET  /api/verify` — header `Authorization: Bearer <WRITE_TOKEN>`, connectivity + feed URL.
 - `GET  /api/status?url=<url>` — header `Authorization: Bearer <WRITE_TOKEN>`, already-saved check.
 - `GET  /api/items?token=<READ_TOKEN>` — full history as JSON, newest-first (review app).
+- `GET/POST /api/setup` — first-run token reveal for env-less deploys (`POST` claims once; no-op when env tokens are set).
 
 ## Extension (load unpacked)
 
