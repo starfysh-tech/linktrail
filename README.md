@@ -137,15 +137,19 @@ RUN_DB_TESTS=1 bun run test  # adds save/feed/verify round-trips vs real Neon
 ```
 
 The DB-gated tests insert and then delete their own marker rows, so they are
-repeatable and leave nothing behind. There are three test seams (and only three):
+repeatable and leave nothing behind. The test seams:
 
 - **`lib/normalize`** (unit) — combinatorial URL cases; shared by both sides.
-- **Backend HTTP endpoints** (integration) — save/feed/verify as black boxes
-  against a test Neon database.
+- **Backend HTTP endpoints** (integration) — save/feed/verify/status/items/setup as
+  black boxes against a test Neon database; pure helpers behind them (`lib/config`,
+  `lib/schema`) are unit-tested without a DB.
 - **Extension capture decisions** (unit) — pure functions (is-capturable, payload
-  assembly, response→state mapping) with `chrome.*` and `fetch` mocked.
+  assembly, response→state mapping, queue decisions) with `chrome.*`/`fetch` mocked.
+- **Web review-app decisions** (`web/src/view.ts`, unit) — search/sort/date-filter,
+  token parse, auth-state, and the JSON/bookmark/OPML export serializers.
 
-No E2E or visual tests in v1.
+Impure glue (service worker, popup, options, web app wiring) is manual-verify. No
+E2E or visual tests.
 
 ## Deploy
 
@@ -192,12 +196,15 @@ both the popup and options page. The amber (systemOrange family) is the only
 saturated color; the rest is neutral graphite glass with specular highlights and
 grain. Light/dark parity is mandatory: the material stays graphite in both modes.
 
-## Status & backlog
+## Status
 
-v1 slices 1–5 are shipped. Backlog:
+v1 (slices 1–5) plus the post-v1 enhancements are shipped — see `docs/issues/01–08`:
 
-- Offline retry queue for failed captures.
-- Popup "already saved" state on open.
-- Unlisted Chrome Web Store distribution.
-- `optional_host_permissions` instead of broad host access.
-- A future review UI (notes / tags / summaries).
+- Review web app — search/browse your full history (slice 6).
+- Self-hosting via a Deploy-to-Vercel button (slice 7).
+- Zero-input deploy — first-run token reveal at `/api/setup` (slice 8).
+- Offline retry queue, popup "already saved" hint, and `optional_host_permissions`.
+- History backup & export (JSON / bookmarks / OPML) + CLI `export`/`import`.
+
+**Open:** the Chrome Web Store listing is submitted and awaiting review (see
+`CHROMEWEBSTORE.md`).
