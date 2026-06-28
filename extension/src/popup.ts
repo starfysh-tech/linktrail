@@ -22,6 +22,7 @@ import {
   reviewUrlFrom,
   type CaptureState,
 } from "./capture";
+import { extractMarkdown, markdownDocument, markdownFilename } from "./extract";
 import { enqueueCapture, flushQueue } from "./queue";
 import type { SaveResponse, StatusResponse } from "../../lib/contract";
 
@@ -36,6 +37,8 @@ const els = {
   savedHint: $("saved-hint"),
   saveBtn: $<HTMLButtonElement>("save-btn"),
   resultStrip: $("result-strip"),
+  exportBtn: $<HTMLButtonElement>("export-btn"),
+  exportLabel: $("export-label"),
   openFeed: $("open-feed"),
   openHistory: $("open-history"),
   openSettings: $("open-settings"),
@@ -81,6 +84,7 @@ async function init(): Promise<void> {
   render("ready");
 
   els.saveBtn?.addEventListener("click", () => void save(tab));
+  els.exportBtn?.addEventListener("click", () => void exportMarkdown(tab));
   els.openFeed?.addEventListener("click", () => void openFeed());
   els.openHistory?.addEventListener("click", () => void openHistory());
   els.openSettings?.addEventListener("click", () => chrome.runtime.openOptionsPage());
@@ -170,6 +174,83 @@ async function save(tab: chrome.tabs.Tab): Promise<void> {
   }
 
   render(state, status);
+}
+
+/**
+ * Local, backend-free export: read the active tab's rendered HTML, extract the
+ * main article to Markdown (the pure `extract` seam), then copy it to the
+ * clipboard AND download a `.md`. Pure decisions stay in `extract`; this glue
+ * owns the page injection, the clock, the clipboard, and the blob download.
+ *
+ * The button's own label is the feedback channel (the result-strip is reserved
+ * for the capture state machine), mirroring the inline copy-confirm pattern.
+ */
+async function exportMarkdown(tab: chrome.tabs.Tab): Promise<void> {
+  if (!tab.id || !tab.url) return;
+  const btn = els.exportBtn;
+  const label = els.exportLabel;
+  const original = label?.textContent ?? "Export as Markdown";
+  const settle = (text: string): void => {
+    if (label) label.textContent = text;
+    if (btn) btn.disabled = false;
+    window.setTimeout(() => {
+      if (label) label.textContent = original;
+    }, 2000);
+  };
+
+  if (btn) btn.disabled = true;
+  if (label) label.textContent = "Reading page…";
+
+  // One-shot read of the rendered DOM in the page's own context. `func` injection
+  // keeps this self-contained — no separate bundled content script to register.
+  let html: string;
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => document.documentElement.outerHTML,
+    });
+    html = (result?.result as string) ?? "";
+  } catch {
+    settle("Can’t read this page");
+    return;
+  }
+
+  const { markdown, title, ok } = extractMarkdown(
+    html,
+    tab.url,
+    tab.title ?? "",
+    (h) => new DOMParser().parseFromString(h, "text/html"),
+  );
+  if (!ok) {
+    settle("No article found");
+    return;
+  }
+
+  const file = markdownDocument(
+    { title, url: tab.url, capturedAt: new Date().toISOString() },
+    markdown,
+  );
+
+  // Clipboard is best-effort (needs focus); the download is the durable result,
+  // so a clipboard failure must not block it.
+  try {
+    await navigator.clipboard.writeText(file);
+  } catch {
+    // No clipboard access — the download below still lands.
+  }
+  downloadTextFile(markdownFilename(title, tab.url), file);
+  settle("Copied + saved .md");
+}
+
+/** Trigger a browser download of `text` as a file, via a transient blob URL. */
+function downloadTextFile(filename: string, text: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: "text/markdown" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  // Revoke after the click has been dispatched so the download isn't truncated.
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 /** Open the review app authenticated, or fall back to options if not set up yet. */

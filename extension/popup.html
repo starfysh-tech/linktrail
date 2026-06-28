@@ -34,6 +34,16 @@
       <!-- Text set by the controller; visibility/colour driven by body state. -->
       <div id="result-strip" class="result-strip" role="status" aria-live="polite"></div>
 
+      <!-- Local, backend-free action: extract the page's main article to Markdown,
+           copy it, and download a .md. Glass (not amber) so the warm Save button
+           stays the single primary action. Its label doubles as inline feedback. -->
+      <button id="export-btn" type="button" class="export-btn">
+        <svg class="export-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v10m0 0 4-4m-4 4-4-4M5 17v2a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span id="export-label" class="export-label">Export as Markdown</span>
+      </button>
+
       <div class="chips">
         <button id="open-feed" type="button" class="chip">Feed</button>
         <button id="open-history" type="button" class="chip">History</button>

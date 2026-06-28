@@ -12,12 +12,17 @@ const icons = {
 export default defineManifest({
   manifest_version: 3,
   name: "Linktrail",
-  version: "0.13.0",
+  version: "0.14.0",
   description: "Capture the current tab into a personal RSS reading history.",
   homepage_url: "https://starfysh-tech.github.io/linktrail/",
   key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5Ex6zAltKTol+cXU4uKlLsrkbibKKgFm6lAQTCxNzfSlnedYeUMvZM7nzEvcyn4LEXVUlC5PGRbWKKfgMLNPhx6+yh8l9E7dHHhIDRv/neVRJS3jBtcFHz/Q5eis09z2zIDN//LnXSvaa9HaOQG9ZFkPAoSa8qmQWW4GYdVeGxOzrWlQm7QgzdGIOg2Loi5nCODTer+CwnB6zU73GSSk1jGazExyoXEeDH8WOMnb3eSA0xqCnRQCcRaDoXKM9Iiaq6hLNzpdd7UricAjlkSQbCm2414EtXV7GKN06RdCWvujCtxSCPP131RZl8jaxsX1XyfexZrrIqLm4tXGyTzjowIDAQAB",
   icons,
-  permissions: ["activeTab", "storage", "notifications", "alarms"],
+  permissions: ["activeTab", "storage", "notifications", "alarms", "scripting"],
+  // Local Markdown export injects a one-shot reader into the active tab via
+  // chrome.scripting to read its rendered HTML. activeTab covers the popup-driven
+  // click, but the broad host grant lets the injection run on any http(s) page the
+  // user exports from; the script only reads `outerHTML` and returns it (no writes).
+  host_permissions: ["https://*/*", "http://*/*"],
   // Requested at runtime (from the options page) for the user's specific backend
   // origin, so the extension can reach a self-hosted backend that doesn't send
   // permissive CORS. The default Vercel backend already sends CORS, so this is
