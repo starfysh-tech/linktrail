@@ -19,10 +19,9 @@ export default defineManifest({
   icons,
   permissions: ["activeTab", "storage", "notifications", "alarms", "scripting"],
   // Local Markdown export injects a one-shot reader into the active tab via
-  // chrome.scripting to read its rendered HTML. activeTab covers the popup-driven
-  // click, but the broad host grant lets the injection run on any http(s) page the
-  // user exports from; the script only reads `outerHTML` and returns it (no writes).
-  host_permissions: ["https://*/*", "http://*/*"],
+  // chrome.scripting to read its rendered HTML. This is always popup-driven (a user
+  // gesture), so `activeTab` grants the needed temporary host access — no broad
+  // host_permissions required. The injected script only reads `outerHTML` (no writes).
   // Requested at runtime (from the options page) for the user's specific backend
   // origin, so the extension can reach a self-hosted backend that doesn't send
   // permissive CORS. The default Vercel backend already sends CORS, so this is
