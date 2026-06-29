@@ -16,12 +16,15 @@ export async function readQueue(): Promise<QueuedCapture[]> {
   return Array.isArray(queue) ? (queue as QueuedCapture[]) : [];
 }
 
-/** Park a capture for later retry (dedup + cap handled by the pure helper). */
-export async function enqueueCapture(input: { url: string; title?: string }): Promise<void> {
+/** Park a capture for later retry (dedup + cap handled by the pure helper). The
+ *  already-compressed `markdownGz` is stored as captured so the retry can resend
+ *  it without re-extracting (there's no tab on retry). */
+export async function enqueueCapture(input: { url: string; title?: string; markdownGz?: string }): Promise<void> {
   const item: QueuedCapture = {
     url: input.url,
     title: input.title ?? "",
     queuedAt: Date.now(),
+    ...(input.markdownGz ? { markdownGz: input.markdownGz } : {}),
   };
   const queue = await readQueue();
   await chrome.storage.local.set({ [STORAGE_KEY]: enqueueItem(queue, item) });
@@ -48,7 +51,7 @@ export async function flushQueue(backendUrl: string, writeToken: string): Promis
           Authorization: `Bearer ${writeToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(buildPayload({ url: item.url, title: item.title })),
+        body: JSON.stringify(buildPayload({ url: item.url, title: item.title, markdownGz: item.markdownGz })),
       });
       status = res.status;
     } catch {

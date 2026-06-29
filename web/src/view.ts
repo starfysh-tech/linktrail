@@ -66,6 +66,17 @@ export function filterByDate(items: Item[], preset: DatePreset, now: number): It
   return items.filter((i) => Date.parse(i.capturedAt) >= since);
 }
 
+/**
+ * The per-item Markdown download URL, or null when the item has no archived copy
+ * — this gates the "Download .md" affordance. The endpoint streams the file with
+ * a `Content-Disposition` filename, so a plain navigation downloads it; the read
+ * token rides in the query like the feed URL.
+ */
+export function markdownDownloadUrl(item: Item, token: string): string | null {
+  if (!item.hasMarkdown) return null;
+  return `/api/items?id=${encodeURIComponent(item.id)}&format=md&token=${encodeURIComponent(token)}`;
+}
+
 /** Bare domain for display (drops scheme + leading www.); raw input on failure. */
 export function domainOf(url: string): string {
   try {

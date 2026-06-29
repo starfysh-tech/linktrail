@@ -13,6 +13,7 @@ import {
   filterByDate,
   sortItems,
   domainOf,
+  markdownDownloadUrl,
   relativeTime,
   toJsonExport,
   toBookmarkHtml,
@@ -117,6 +118,21 @@ function row(item: Item, now: number): HTMLLIElement {
 
   a.append(tile, meta);
   li.append(a);
+
+  // Archived-Markdown affordance: a sibling link (not nested in the row's <a>) to
+  // the per-item .md endpoint. The server's Content-Disposition drives the
+  // download, so a plain navigation saves the file. Only shown when an archive
+  // exists; null when the item has no markdown or we somehow lack a token.
+  const mdUrl = token ? markdownDownloadUrl(item, token) : null;
+  if (mdUrl) {
+    const dl = document.createElement("a");
+    dl.className = "dl-md";
+    dl.href = mdUrl;
+    dl.textContent = ".md";
+    dl.title = "Download archived Markdown";
+    dl.setAttribute("aria-label", `Download Markdown for ${item.title || domain}`);
+    li.append(dl);
+  }
   return li;
 }
 

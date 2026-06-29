@@ -58,6 +58,16 @@ describe("buildPayload", () => {
       title: "Hello",
     });
   });
+
+  it("includes markdownGz only when provided", () => {
+    expect(buildPayload({ url: "https://e.com", title: "T", markdownGz: "H4sIAA==" })).toEqual({
+      url: "https://e.com",
+      title: "T",
+      markdownGz: "H4sIAA==",
+    });
+    // Absent markdownGz keeps the body a minimal url+title shape (no key).
+    expect(buildPayload({ url: "https://e.com" })).toEqual({ url: "https://e.com", title: "" });
+  });
 });
 
 describe("mapResponseToState", () => {
@@ -210,6 +220,19 @@ describe("enqueueItem", () => {
     // The www./tracking variant collapses to the same identity as a.com.
     expect(q.map((i) => i.url)).toEqual(["https://b.com", "https://a.com"]);
     expect(q[q.length - 1].queuedAt).toBe(3);
+  });
+
+  it("preserves the captured markdownGz through enqueue + dedupe", () => {
+    const withMd: QueuedCapture = {
+      url: "https://a.com",
+      title: "t",
+      queuedAt: 2,
+      markdownGz: "H4sIAA==",
+    };
+    // Re-queuing the same URL collapses to one entry that keeps the archive.
+    const q = enqueueItem([mk("https://a.com", 1)], withMd);
+    expect(q).toHaveLength(1);
+    expect(q[0].markdownGz).toBe("H4sIAA==");
   });
 
   it("caps the queue by evicting the oldest", () => {

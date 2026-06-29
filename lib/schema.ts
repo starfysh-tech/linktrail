@@ -27,6 +27,12 @@ async function runDdl(): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS saved_items_normalized_url_key
     ON saved_items (normalized_url)
   `;
+  // Archived page body (full Markdown document). Nullable, no default → adding it
+  // is a metadata-only change (no table rewrite) and concurrency-safe; rows
+  // without an archive simply leave it NULL.
+  await sql`
+    ALTER TABLE saved_items ADD COLUMN IF NOT EXISTS markdown text
+  `;
   // Single-row config holding the backend's tokens for env-less (zero-input)
   // deploys. The id=1 singleton + CHECK means there is at most one row, so the
   // first-run claim is an atomic INSERT ... ON CONFLICT (id) DO NOTHING.

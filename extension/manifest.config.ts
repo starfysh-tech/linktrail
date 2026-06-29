@@ -12,7 +12,7 @@ const icons = {
 export default defineManifest({
   manifest_version: 3,
   name: "Linktrail",
-  version: "0.14.0",
+  version: "0.15.0",
   description: "Capture the current tab into a personal RSS reading history.",
   homepage_url: "https://starfysh-tech.github.io/linktrail/",
   key: "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5Ex6zAltKTol+cXU4uKlLsrkbibKKgFm6lAQTCxNzfSlnedYeUMvZM7nzEvcyn4LEXVUlC5PGRbWKKfgMLNPhx6+yh8l9E7dHHhIDRv/neVRJS3jBtcFHz/Q5eis09z2zIDN//LnXSvaa9HaOQG9ZFkPAoSa8qmQWW4GYdVeGxOzrWlQm7QgzdGIOg2Loi5nCODTer+CwnB6zU73GSSk1jGazExyoXEeDH8WOMnb3eSA0xqCnRQCcRaDoXKM9Iiaq6hLNzpdd7UricAjlkSQbCm2414EtXV7GKN06RdCWvujCtxSCPP131RZl8jaxsX1XyfexZrrIqLm4tXGyTzjowIDAQAB",

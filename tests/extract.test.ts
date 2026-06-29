@@ -5,6 +5,9 @@ import {
   markdownFilename,
   frontMatter,
   markdownDocument,
+  withinGzCap,
+  packMarkdownGz,
+  GZ_BASE64_CAP,
   type HtmlToDocument,
 } from "../extension/src/extract";
 
@@ -115,5 +118,46 @@ describe("frontMatter / markdownDocument", () => {
     );
     expect(doc.startsWith("---\n")).toBe(true);
     expect(doc).toContain("\n\n# Body\n\nText.\n");
+  });
+});
+
+describe("withinGzCap", () => {
+  it("accepts a non-empty payload up to the cap, rejects empty and oversize", () => {
+    expect(withinGzCap(0)).toBe(false); // nothing to send
+    expect(withinGzCap(1)).toBe(true);
+    expect(withinGzCap(GZ_BASE64_CAP)).toBe(true); // inclusive upper bound
+    expect(withinGzCap(GZ_BASE64_CAP + 1)).toBe(false);
+  });
+});
+
+describe("packMarkdownGz", () => {
+  const at = "2026-06-28T12:00:00.000Z";
+
+  // Inverse of the production pack step: base64 → gunzip → text. Confirms the
+  // payload is a real gzip stream carrying the composed Markdown document.
+  async function gunzipBase64(b64: string): Promise<string> {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return await new Response(stream).text();
+  }
+
+  it("packs an extractable article into base64 gzip that round-trips to the doc", async () => {
+    const gz = await packMarkdownGz(
+      articleHtml,
+      "https://tidewatch.example/point-lobos",
+      "Tab Title",
+      toDom,
+      at,
+    );
+    expect(typeof gz).toBe("string");
+    const text = await gunzipBase64(gz!);
+    expect(text).toContain("The Tide Pools of Point Lobos");
+    expect(text).toContain(`captured: ${at}`); // front-matter survives the round-trip
+  });
+
+  it("returns undefined (never throws) when no article is found", async () => {
+    const spa = `<!doctype html><html><head><title>Dashboard</title></head>
+      <body><div id="root"></div><script src="/app.js"></script></body></html>`;
+    expect(await packMarkdownGz(spa, "https://app.example/x", "Dashboard", toDom, at)).toBeUndefined();
   });
 });

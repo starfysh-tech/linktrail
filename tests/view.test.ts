@@ -7,6 +7,7 @@ import {
   presetSince,
   filterByDate,
   domainOf,
+  markdownDownloadUrl,
   relativeTime,
   toJsonExport,
   toBookmarkHtml,
@@ -100,6 +101,23 @@ describe("domainOf", () => {
   });
   it("falls back to raw input when unparseable", () => {
     expect(domainOf("not a url")).toBe("not a url");
+  });
+});
+
+describe("markdownDownloadUrl", () => {
+  it("builds a tokenized .md endpoint URL when the item has an archive", () => {
+    const url = markdownDownloadUrl(mk({ id: "42", hasMarkdown: true }), "READ1");
+    expect(url).toBe("/api/items?id=42&format=md&token=READ1");
+  });
+
+  it("gates the affordance off when the item has no archived markdown", () => {
+    expect(markdownDownloadUrl(mk({ id: "1", hasMarkdown: false }), "READ1")).toBeNull();
+    expect(markdownDownloadUrl(mk({ id: "1" }), "READ1")).toBeNull(); // flag absent
+  });
+
+  it("url-encodes the id and token", () => {
+    const url = markdownDownloadUrl(mk({ id: "a/b", hasMarkdown: true }), "t k+");
+    expect(url).toBe("/api/items?id=a%2Fb&format=md&token=t%20k%2B");
   });
 });
 

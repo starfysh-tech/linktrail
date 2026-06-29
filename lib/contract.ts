@@ -7,6 +7,14 @@ export interface SaveRequest {
   url: string;
   /** The page title; may be empty (server applies a host fallback in Slice 2). */
   title: string;
+  /**
+   * Optional archived page body: base64 of the gzip-compressed full Markdown
+   * document (front-matter + Readability/Turndown output). Gzipped on the wire
+   * to stay well under the function request-body limit; the server gunzips and
+   * stores the text. Absent when the page isn't extractable or the (compressed)
+   * body exceeds the client guard — the save still succeeds as url+title only.
+   */
+  markdownGz?: string;
 }
 
 /**
@@ -31,6 +39,13 @@ export interface Item {
   url: string;
   title: string;
   capturedAt: string;
+  /**
+   * Whether an archived Markdown body exists for this item. The list response
+   * carries only this flag (never the body) so the full-history read stays
+   * small; the body is fetched per-item via `GET /api/items?id=…&format=md`.
+   * Optional so existing `Item` constructors stay valid; the list always sets it.
+   */
+  hasMarkdown?: boolean;
 }
 
 /**

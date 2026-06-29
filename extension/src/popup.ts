@@ -22,7 +22,7 @@ import {
   reviewUrlFrom,
   type CaptureState,
 } from "./capture";
-import { extractMarkdown, markdownDocument, markdownFilename } from "./extract";
+import { extractMarkdown, markdownDocument, markdownFilename, packMarkdownGz } from "./extract";
 import { enqueueCapture, flushQueue } from "./queue";
 import type { SaveResponse, StatusResponse } from "../../lib/contract";
 
@@ -147,6 +147,12 @@ async function save(tab: chrome.tabs.Tab): Promise<void> {
     return;
   }
 
+  // Best-effort archive: read the rendered page and pack a gzip'd Markdown copy
+  // to ride along on the save. Any failure (unreadable page, no article, oversize)
+  // returns undefined and the save proceeds url+title only — it MUST NOT early-
+  // return the way the export action does, since saving is the primary outcome.
+  const markdownGz = await packPageMarkdown(tab);
+
   let state: CaptureState;
   let status = 0; // network/thrown errors are represented as status 0 (→ temporary).
   try {
@@ -156,7 +162,7 @@ async function save(tab: chrome.tabs.Tab): Promise<void> {
         Authorization: `Bearer ${writeToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(buildPayload({ url: tab.url!, title: tab.title })),
+      body: JSON.stringify(buildPayload({ url: tab.url!, title: tab.title, markdownGz })),
     });
     status = res.status;
     const outcome = res.ok ? ((await res.json()) as SaveResponse).outcome : undefined;
@@ -167,13 +173,41 @@ async function save(tab: chrome.tabs.Tab): Promise<void> {
   }
 
   // Park a temporary failure for background retry instead of losing it; the user
-  // sees the reassuring "Queued — will retry" pill rather than a hard error.
+  // sees the reassuring "Queued — will retry" pill rather than a hard error. The
+  // already-packed markdown rides along so the retry doesn't need the tab.
   if (state === "failed" && shouldEnqueue(status)) {
-    await enqueueCapture({ url: tab.url!, title: tab.title });
+    await enqueueCapture({ url: tab.url!, title: tab.title, markdownGz });
     state = "queued";
   }
 
   render(state, status);
+}
+
+/**
+ * Read the active tab's rendered HTML and pack a gzip'd Markdown archive for the
+ * save. Reuses the export action's one-shot `executeScript` outerHTML read, then
+ * the pure `packMarkdownGz` seam (DOM injected via `DOMParser`). Returns undefined
+ * on any failure so the save degrades to url+title — never throws into save().
+ */
+async function packPageMarkdown(tab: chrome.tabs.Tab): Promise<string | undefined> {
+  if (!tab.id || !tab.url) return undefined;
+  let html: string;
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => document.documentElement.outerHTML,
+    });
+    html = (result?.result as string) ?? "";
+  } catch {
+    return undefined;
+  }
+  return packMarkdownGz(
+    html,
+    tab.url,
+    tab.title ?? "",
+    (h) => new DOMParser().parseFromString(h, "text/html"),
+    new Date().toISOString(),
+  );
 }
 
 /**

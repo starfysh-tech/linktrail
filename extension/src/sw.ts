@@ -23,6 +23,8 @@ import {
   type CaptureState,
 } from "./capture";
 import { enqueueCapture, flushQueue } from "./queue";
+import { packMarkdownGz } from "./extract";
+import { parseHTML } from "linkedom";
 
 const BADGE_CLEAR_MS = 2000;
 
@@ -58,6 +60,33 @@ function notifyFailure(kind: ReturnType<typeof failureKind>): void {
 
 function notify(id: string, { title, message }: { title: string; message: string }): void {
   chrome.notifications.create(id, { type: "basic", iconUrl: ICON, title, message });
+}
+
+/**
+ * Read the triggered tab's rendered HTML and pack a gzip'd Markdown archive. The
+ * MV3 service worker has no `DOMParser`, so the pure `packMarkdownGz` seam gets a
+ * `linkedom`-backed parser (the same DOM-free parser the unit tests use). Returns
+ * undefined on any failure so the save degrades to url+title; never throws.
+ */
+async function packPageMarkdown(tab: chrome.tabs.Tab): Promise<string | undefined> {
+  if (!tab.id || !tab.url) return undefined;
+  let html: string;
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => document.documentElement.outerHTML,
+    });
+    html = (result?.result as string) ?? "";
+  } catch {
+    return undefined;
+  }
+  return packMarkdownGz(
+    html,
+    tab.url,
+    tab.title ?? "",
+    (h) => parseHTML(h).document as unknown as Document,
+    new Date().toISOString(),
+  );
 }
 
 /**
@@ -116,6 +145,11 @@ chrome.commands.onCommand.addListener(async (command) => {
     return;
   }
 
+  // Archive the page as gzip'd Markdown BEFORE the flush/save awaits below, so the
+  // activeTab grant still resolves to the page the user triggered on. Best-effort:
+  // undefined on any failure, and the save continues url+title only.
+  const markdownGz = await packPageMarkdown(tab!);
+
   // Opportunistic drain: if we're online enough to capture, flush any backlog
   // first. Silent here — the manual capture's own feedback follows.
   await flushQueue(backendUrl, writeToken);
@@ -129,7 +163,7 @@ chrome.commands.onCommand.addListener(async (command) => {
         Authorization: `Bearer ${writeToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(buildPayload({ url: tab!.url!, title: tab!.title })),
+      body: JSON.stringify(buildPayload({ url: tab!.url!, title: tab!.title, markdownGz })),
     });
     status = res.status;
     // Only read JSON on success; an error body may not be JSON.
@@ -142,7 +176,7 @@ chrome.commands.onCommand.addListener(async (command) => {
   // A temporary failure is parked for retry rather than lost: enqueue and report
   // the reassuring "queued" outcome instead of a hard failure.
   if (state === "failed" && shouldEnqueue(status)) {
-    await enqueueCapture({ url: tab!.url!, title: tab!.title });
+    await enqueueCapture({ url: tab!.url!, title: tab!.title, markdownGz });
     state = "queued";
   }
 

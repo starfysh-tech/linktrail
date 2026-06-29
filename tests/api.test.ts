@@ -1,6 +1,12 @@
 import { describe, it, expect, beforeAll } from "bun:test";
+import { gzipSync } from "node:zlib";
 import { loadEnvLocal } from "../lib/load-env";
 import { normalizeUrl } from "../lib/normalize";
+
+/** Pack markdown the way the extension does: gzip → base64 (the wire shape). */
+function packMarkdown(md: string): string {
+  return gzipSync(Buffer.from(md, "utf-8")).toString("base64");
+}
 
 // Seam 1: drive the HTTP endpoints as black boxes.
 //
@@ -408,6 +414,100 @@ describe("normalization, dedupe & title fallback (DB-gated)", () => {
 
     const rows = await sql`SELECT title FROM saved_items WHERE original_url = ${url}`;
     expect(rows[0].title).toBe("linktrail-dedupe.example");
+
+    await sql`DELETE FROM saved_items WHERE original_url = ${url}`;
+  });
+});
+
+describe("markdown archive on save (DB-gated)", () => {
+  const auth = {
+    Authorization: `Bearer ${process.env.WRITE_TOKEN}`,
+    "Content-Type": "application/json",
+  };
+
+  dbit("stores markdown on a fresh insert and exposes it via format=md", async () => {
+    const url = `https://linktrail-md.example/insert-${Date.now()}`;
+    const md = "# Hello\n\nArchived body.";
+    const res = await POST(saveReq(auth, { url, title: "MD Insert", markdownGz: packMarkdown(md) }));
+    expect(res.status).toBe(200);
+    const { id } = (await res.json()) as { id: string };
+
+    const dl = await itemsGET(
+      new Request(`https://x/api/items?token=${process.env.READ_TOKEN}&id=${id}&format=md`),
+    );
+    expect(dl.status).toBe(200);
+    expect(dl.headers.get("Content-Type")).toContain("text/markdown");
+    expect(dl.headers.get("Content-Disposition")).toContain("attachment");
+    expect(dl.headers.get("Content-Disposition")).toContain(".md");
+    expect(await dl.text()).toBe(md);
+
+    await sql`DELETE FROM saved_items WHERE original_url = ${url}`;
+  });
+
+  dbit("list exposes hasMarkdown for archived vs. plain rows", async () => {
+    const withMd = `https://linktrail-md.example/has-${Date.now()}`;
+    const without = `https://linktrail-md.example/none-${Date.now()}`;
+    await POST(saveReq(auth, { url: withMd, title: "Has", markdownGz: packMarkdown("# x") }));
+    await POST(saveReq(auth, { url: without, title: "None" }));
+
+    const res = await itemsGET(new Request(`https://x/api/items?token=${process.env.READ_TOKEN}`));
+    const items = (await res.json()) as Array<{ url: string; hasMarkdown: boolean }>;
+    expect(items.find((i) => i.url === withMd)?.hasMarkdown).toBe(true);
+    expect(items.find((i) => i.url === without)?.hasMarkdown).toBe(false);
+
+    await sql`DELETE FROM saved_items WHERE original_url IN (${withMd}, ${without})`;
+  });
+
+  dbit("duplicate backfills markdown when the existing row has none", async () => {
+    const url = `https://linktrail-md.example/backfill-${Date.now()}`;
+    // First save: no markdown.
+    await POST(saveReq(auth, { url, title: "Backfill" }));
+    // Re-save (same normalized URL) WITH markdown → duplicate, but backfilled.
+    const md = "# Backfilled";
+    const r2 = await POST(saveReq(auth, { url, title: "Backfill", markdownGz: packMarkdown(md) }));
+    expect(((await r2.json()) as { outcome: string }).outcome).toBe("duplicate");
+
+    const rows = await sql`SELECT markdown FROM saved_items WHERE normalized_url = ${normalizeUrl(url)}`;
+    expect(rows[0].markdown).toBe(md);
+
+    await sql`DELETE FROM saved_items WHERE normalized_url = ${normalizeUrl(url)}`;
+  });
+
+  dbit("duplicate does NOT overwrite an existing markdown archive (first-archive-wins)", async () => {
+    const url = `https://linktrail-md.example/nooverwrite-${Date.now()}`;
+    const first = "# First archive";
+    await POST(saveReq(auth, { url, title: "Keep", markdownGz: packMarkdown(first) }));
+    // Re-save with different markdown → must keep the first.
+    const r2 = await POST(saveReq(auth, { url, title: "Keep", markdownGz: packMarkdown("# Second") }));
+    expect(((await r2.json()) as { outcome: string }).outcome).toBe("duplicate");
+
+    const rows = await sql`SELECT markdown FROM saved_items WHERE normalized_url = ${normalizeUrl(url)}`;
+    expect(rows[0].markdown).toBe(first);
+
+    await sql`DELETE FROM saved_items WHERE normalized_url = ${normalizeUrl(url)}`;
+  });
+
+  dbit("format=md returns 404 when the row has no markdown", async () => {
+    const url = `https://linktrail-md.example/plain-${Date.now()}`;
+    const res = await POST(saveReq(auth, { url, title: "Plain" }));
+    const { id } = (await res.json()) as { id: string };
+
+    const dl = await itemsGET(
+      new Request(`https://x/api/items?token=${process.env.READ_TOKEN}&id=${id}&format=md`),
+    );
+    expect(dl.status).toBe(404);
+
+    await sql`DELETE FROM saved_items WHERE original_url = ${url}`;
+  });
+
+  dbit("a bad/undecodable markdownGz still saves url+title (no 500)", async () => {
+    const url = `https://linktrail-md.example/badgz-${Date.now()}`;
+    const res = await POST(saveReq(auth, { url, title: "BadGz", markdownGz: "!!!not-base64-gzip!!!" }));
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { outcome: string }).outcome).toBe("saved");
+
+    const rows = await sql`SELECT markdown FROM saved_items WHERE original_url = ${url}`;
+    expect(rows[0].markdown).toBeNull();
 
     await sql`DELETE FROM saved_items WHERE original_url = ${url}`;
   });

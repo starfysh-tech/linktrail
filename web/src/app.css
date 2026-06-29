@@ -183,7 +183,14 @@ button.primary {
   flex-direction: column;
   gap: 8px;
 }
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .item-link {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -227,6 +234,23 @@ button.primary {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.dl-md {
+  flex: 0 0 auto;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-2);
+  padding: 7px 10px;
+  border: 0.5px solid var(--hair);
+  border-radius: 10px;
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+}
+.dl-md:hover {
+  color: var(--on);
+  background: var(--glass-2);
 }
 .empty,
 .status {

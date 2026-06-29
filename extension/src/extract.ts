@@ -121,6 +121,74 @@ export function markdownDocument(meta: { title: string; url: string; capturedAt:
   return `${frontMatter(meta)}\n\n${markdown}\n`;
 }
 
+/**
+ * Generous ceiling, in base64 characters, for an archived gzip'd markdown body
+ * riding along on the save request. A page past this is saved url+title only.
+ * Deliberately a single flat constant — not a tuned byte budget — since the
+ * compressed-then-base64 size of even long articles sits far below it.
+ */
+export const GZ_BASE64_CAP = 4_000_000;
+
+/**
+ * Pure cap decision: is a base64 gzip payload of this length small enough to
+ * carry on the wire? Isolated from the async gzip glue so it stays unit-testable.
+ * Empty (length 0) is rejected — there's nothing worth sending.
+ */
+export function withinGzCap(base64Length: number): boolean {
+  return base64Length > 0 && base64Length <= GZ_BASE64_CAP;
+}
+
+/**
+ * Archive a page as `SaveRequest.markdownGz`: extract the article, build the full
+ * Markdown document, gzip it, and base64-encode the bytes.
+ *
+ * Returns `undefined` — and NEVER throws — whenever archiving can't or shouldn't
+ * happen: no extractable article (`ok: false`), a gzip/encoding failure, or a
+ * compressed body past {@link GZ_BASE64_CAP}. Archiving is always best-effort:
+ * the caller then saves url+title only, so this must never block or fail a save.
+ *
+ * `toDocument` is dependency-injected (popup → `DOMParser`, service worker →
+ * `linkedom`, tests → `linkedom`) to keep this module free of DOM globals; the
+ * gzip step uses the `CompressionStream` Web API, available in both the popup and
+ * the MV3 service worker.
+ */
+export async function packMarkdownGz(
+  html: string,
+  url: string,
+  title: string,
+  toDocument: HtmlToDocument,
+  capturedAt: string,
+): Promise<string | undefined> {
+  try {
+    const { markdown, title: docTitle, ok } = extractMarkdown(html, url, title, toDocument);
+    if (!ok) return undefined;
+    const doc = markdownDocument({ title: docTitle, url, capturedAt }, markdown);
+    const gz = await gzipToBase64(doc);
+    return withinGzCap(gz.length) ? gz : undefined;
+  } catch {
+    // Injection/readability/compression failure — degrade to a url+title save.
+    return undefined;
+  }
+}
+
+/** Gzip `text` via the streaming Web API and base64-encode the resulting bytes. */
+async function gzipToBase64(text: string): Promise<string> {
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  return bytesToBase64(bytes);
+}
+
+/** Base64 a byte array in chunks so a large body never overflows the call stack
+ *  via `String.fromCharCode(...spread)`. */
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
 /** Lowercase ASCII slug; non-alphanumeric runs collapse to single hyphens. */
 function slugify(s: string): string {
   return s

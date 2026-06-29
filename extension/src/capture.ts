@@ -31,6 +31,13 @@ export interface QueuedCapture {
   title: string;
   /** Epoch ms when first parked — used only for ordering/diagnostics. */
   queuedAt: number;
+  /**
+   * Archived page body captured at enqueue time (base64 gzip of the Markdown
+   * document). Already compressed + capped, so it stays small on disk. Optional:
+   * absent when the page wasn't extractable, and a retry never re-extracts (there
+   * is no tab on retry), so whatever was captured here is what gets sent.
+   */
+  markdownGz?: string;
 }
 
 /** Max parked captures kept in storage; oldest are dropped past this bound. */
@@ -51,9 +58,13 @@ export function isCapturable(url: string | undefined): boolean {
   }
 }
 
-/** Assemble the wire payload; title defaults to empty (server applies fallback). */
-export function buildPayload(input: { url: string; title?: string }): SaveRequest {
-  return { url: input.url, title: input.title ?? "" };
+/** Assemble the wire payload; title defaults to empty (server applies fallback).
+ *  `markdownGz` is threaded through only when present so a url+title save stays a
+ *  minimal `{ url, title }` body. */
+export function buildPayload(input: { url: string; title?: string; markdownGz?: string }): SaveRequest {
+  const payload: SaveRequest = { url: input.url, title: input.title ?? "" };
+  if (input.markdownGz) payload.markdownGz = input.markdownGz;
+  return payload;
 }
 
 /**

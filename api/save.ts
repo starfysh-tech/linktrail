@@ -1,6 +1,7 @@
 // NOTE: explicit .js extensions are required — Vercel compiles each function to
 // ESM ("type":"module"), and Node ESM does not resolve extensionless relative
 // imports at runtime. TS (bundler resolution) and Bun still map these to the .ts.
+import { gunzipSync } from "node:zlib";
 import { sql } from "../lib/db.js";
 import { ensureSchema } from "../lib/schema.js";
 import { getTokens } from "../lib/config.js";
@@ -54,13 +55,17 @@ export async function POST(req: Request): Promise<Response> {
   // Title fallback: empty/whitespace title becomes the normalized host.
   const finalTitle = (title ?? "").trim() || new URL(normalized).hostname;
 
+  // Optional archived Markdown body, gzipped + base64 on the wire. A bad/oversize
+  // payload must never fail the save: it degrades to a url+title-only insert.
+  const markdown = decodeMarkdown(body.markdownGz);
+
   // Lazily ensure the schema (incl. the unique index `ON CONFLICT` relies on)
   // so a brand-new self-hosted database needs no manual migration.
   await ensureSchema();
 
   const inserted = await sql`
-    INSERT INTO saved_items (original_url, normalized_url, title)
-    VALUES (${url}, ${normalized}, ${finalTitle})
+    INSERT INTO saved_items (original_url, normalized_url, title, markdown)
+    VALUES (${url}, ${normalized}, ${finalTitle}, ${markdown})
     ON CONFLICT (normalized_url) DO NOTHING
     RETURNING id
   `;
@@ -69,10 +74,38 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   // Conflict: the normalized URL already exists — return its id as a duplicate.
+  // First-archive-wins: backfill markdown only when the existing row has none, so
+  // a re-save can supply an archive but never overwrite an earlier one.
+  if (markdown) {
+    await sql`
+      UPDATE saved_items SET markdown = ${markdown}
+      WHERE normalized_url = ${normalized} AND markdown IS NULL
+    `;
+  }
   const existing = await sql`
     SELECT id FROM saved_items WHERE normalized_url = ${normalized}
   `;
   return json({ outcome: "duplicate", id: existing[0].id as string } satisfies SaveResponse, 200);
+}
+
+/** Generous decompressed-size cap — a cheap zip-bomb guard, not a tuned limit. */
+const MAX_MARKDOWN_CHARS = 25_000_000;
+
+/**
+ * Decode the optional `markdownGz` payload (base64 of gzip) to UTF-8 text.
+ * Returns null on absence, any decode/gunzip failure, or when the decompressed
+ * body exceeds the cap — the caller treats null as "no archive" and the save
+ * still proceeds.
+ */
+function decodeMarkdown(markdownGz: string | undefined): string | null {
+  if (!markdownGz) return null;
+  try {
+    const text = gunzipSync(Buffer.from(markdownGz, "base64")).toString("utf-8");
+    if (text.length > MAX_MARKDOWN_CHARS) return null;
+    return text || null;
+  } catch {
+    return null;
+  }
 }
 
 function json(body: unknown, status: number): Response {
