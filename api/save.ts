@@ -74,12 +74,13 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   // Conflict: the normalized URL already exists — return its id as a duplicate.
-  // First-archive-wins: backfill markdown only when the existing row has none, so
-  // a re-save can supply an archive but never overwrite an earlier one.
+  // A save refreshes the archive: when this save carries markdown, overwrite the
+  // stored copy (a re-save is an explicit "update this" gesture). A save WITHOUT
+  // markdown (extraction failed/queued) never wipes an existing archive.
   if (markdown) {
     await sql`
       UPDATE saved_items SET markdown = ${markdown}
-      WHERE normalized_url = ${normalized} AND markdown IS NULL
+      WHERE normalized_url = ${normalized}
     `;
   }
   const existing = await sql`

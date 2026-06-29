@@ -473,16 +473,30 @@ describe("markdown archive on save (DB-gated)", () => {
     await sql`DELETE FROM saved_items WHERE normalized_url = ${normalizeUrl(url)}`;
   });
 
-  dbit("duplicate does NOT overwrite an existing markdown archive (first-archive-wins)", async () => {
-    const url = `https://linktrail-md.example/nooverwrite-${Date.now()}`;
-    const first = "# First archive";
-    await POST(saveReq(auth, { url, title: "Keep", markdownGz: packMarkdown(first) }));
-    // Re-save with different markdown → must keep the first.
-    const r2 = await POST(saveReq(auth, { url, title: "Keep", markdownGz: packMarkdown("# Second") }));
+  dbit("re-save refreshes an existing markdown archive with the new content", async () => {
+    const url = `https://linktrail-md.example/refresh-${Date.now()}`;
+    await POST(saveReq(auth, { url, title: "Keep", markdownGz: packMarkdown("# First archive") }));
+    // Re-save with different markdown → duplicate, but the archive is refreshed.
+    const second = "# Second archive";
+    const r2 = await POST(saveReq(auth, { url, title: "Keep", markdownGz: packMarkdown(second) }));
     expect(((await r2.json()) as { outcome: string }).outcome).toBe("duplicate");
 
     const rows = await sql`SELECT markdown FROM saved_items WHERE normalized_url = ${normalizeUrl(url)}`;
-    expect(rows[0].markdown).toBe(first);
+    expect(rows[0].markdown).toBe(second);
+
+    await sql`DELETE FROM saved_items WHERE normalized_url = ${normalizeUrl(url)}`;
+  });
+
+  dbit("a re-save WITHOUT markdown never wipes an existing archive", async () => {
+    const url = `https://linktrail-md.example/nowipe-${Date.now()}`;
+    const archived = "# Keep me";
+    await POST(saveReq(auth, { url, title: "Keep", markdownGz: packMarkdown(archived) }));
+    // Re-save with no markdown (e.g. extraction failed / offline queue) → preserved.
+    const r2 = await POST(saveReq(auth, { url, title: "Keep" }));
+    expect(((await r2.json()) as { outcome: string }).outcome).toBe("duplicate");
+
+    const rows = await sql`SELECT markdown FROM saved_items WHERE normalized_url = ${normalizeUrl(url)}`;
+    expect(rows[0].markdown).toBe(archived);
 
     await sql`DELETE FROM saved_items WHERE normalized_url = ${normalizeUrl(url)}`;
   });
