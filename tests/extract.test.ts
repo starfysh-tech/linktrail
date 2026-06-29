@@ -63,6 +63,50 @@ describe("extractMarkdown", () => {
     expect(r.ok).toBe(false);
     expect(r.title).toBe("only-host.example");
   });
+
+  it("strips decorative icons (empty alt) and chrome but keeps captioned images", () => {
+    const html = `<!doctype html><html><head><title>Gear Guide</title></head><body>
+      <nav><a href="/">Home</a></nav>
+      <svg aria-hidden="true"><path d="M0 0"/></svg>
+      <article>
+        <h1>Gear Guide</h1>
+        <p>This is a reasonably long paragraph of body copy so Readability treats
+           the article as the main content and keeps it through extraction.</p>
+        <p>A second paragraph adds enough text density for the scorer to commit to
+           this region as the article body rather than discarding it as chrome.</p>
+        <img src="https://cdn.example/icon1.png" alt="">
+        <img src="https://cdn.example/icon2.png">
+        <img src="https://cdn.example/diagram.png" alt="Build diagram">
+      </article>
+      <footer>Site footer junk</footer>
+    </body></html>`;
+    const r = extractMarkdown(html, "https://guides.example/gear", "Gear Guide", toDom);
+    expect(r.ok).toBe(true);
+    expect(r.markdown).not.toContain("icon1.png"); // empty alt → dropped
+    expect(r.markdown).not.toContain("icon2.png"); // missing alt → dropped
+    expect(r.markdown).toContain("Build diagram"); // real alt → kept
+    expect(r.markdown).not.toContain("Site footer junk");
+  });
+
+  it("converts a real data table to a GFM Markdown table", () => {
+    const html = `<!doctype html><html><head><title>Stats</title></head><body>
+      <article>
+        <h1>Stats</h1>
+        <p>Below are the recommended stat priorities for the build, given here as a
+           proper table so it should survive as a Markdown table after conversion.</p>
+        <p>The surrounding prose keeps the article dense enough for Readability.</p>
+        <table>
+          <thead><tr><th>Stat</th><th>Priority</th></tr></thead>
+          <tbody><tr><td>Intelligence</td><td>High</td></tr>
+                 <tr><td>Critical</td><td>Medium</td></tr></tbody>
+        </table>
+      </article>
+    </body></html>`;
+    const r = extractMarkdown(html, "https://guides.example/stats", "Stats", toDom);
+    expect(r.ok).toBe(true);
+    expect(r.markdown).toContain("| Stat | Priority |");
+    expect(r.markdown).toContain("| Intelligence | High |");
+  });
 });
 
 describe("markdownFilename", () => {

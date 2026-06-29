@@ -14,6 +14,7 @@
  */
 import { Readability } from "@mozilla/readability";
 import TurndownService from "turndown";
+import { gfm } from "turndown-plugin-gfm";
 
 /** Outcome of an extraction attempt. `ok: false` means "no main content" — the
  *  caller should surface that rather than emit the empty/garbage markdown. */
@@ -29,15 +30,54 @@ export interface ExtractResult {
 export type HtmlToDocument = (html: string) => Document;
 
 /** Turndown configured to match the reference extractor's Markdown style:
- *  ATX headings, fenced code, `-` bullets, `_` emphasis, `---` rules. */
+ *  ATX headings, fenced code, `-` bullets, `_` emphasis, `---` rules. The GFM
+ *  plugin adds table / strikethrough / task-list support so real `<table>`s
+ *  survive as Markdown tables instead of flattening to runs of text. */
 function newTurndown(): TurndownService {
-  return new TurndownService({
+  const td = new TurndownService({
     headingStyle: "atx",
     hr: "---",
     bulletListMarker: "-",
     codeBlockStyle: "fenced",
     emDelimiter: "_",
   });
+  td.use(gfm);
+  return td;
+}
+
+/**
+ * Strip non-content noise before Readability so widget-heavy / app-style pages
+ * convert to clean Markdown instead of icon-and-chrome soup: scripts, styles,
+ * media, interactive controls, navigation regions, ARIA-hidden nodes, and
+ * decorative images (empty `alt`) — then drop the containers those leave empty.
+ *
+ * Operates on the injected `Document` only (querySelectorAll / remove), so it
+ * stays free of DOM globals and is unit-tested via linkedom. The complementary
+ * whitespace-separator pass can't live here — it needs live layout
+ * (`getComputedStyle`) and so runs in the in-page reader (`page-reader.ts`).
+ */
+function cleanDocument(doc: Document): void {
+  const NOISE = [
+    "script", "style", "noscript", "svg", "canvas", "video", "audio", "iframe",
+    "button", "input", "select", "textarea", "nav", "footer", "aside", "form",
+    '[aria-hidden="true"]', '[role="navigation"]', '[role="button"]',
+    '[role="tablist"]', '[role="dialog"]',
+  ].join(",");
+  doc.querySelectorAll(NOISE).forEach((el) => el.remove());
+
+  doc.querySelectorAll("img").forEach((img) => {
+    if (!(img.getAttribute("alt") || "").trim()) img.remove();
+  });
+
+  // Several passes: removing children can empty their parents in turn. Keep any
+  // element that still holds real content (text or a meaningful child).
+  for (let pass = 0; pass < 4; pass++) {
+    doc.querySelectorAll("div,span,li,p,section,a").forEach((el) => {
+      if (!el.textContent?.trim() && !el.querySelector("img,h1,h2,h3,h4,table,pre,code")) {
+        el.remove();
+      }
+    });
+  }
 }
 
 /**
@@ -59,6 +99,7 @@ export function extractMarkdown(
   let article: ReturnType<Readability["parse"]> = null;
   try {
     const doc = toDocument(html);
+    cleanDocument(doc); // strip widget/icon noise before scoring
     article = new Readability(doc).parse();
   } catch {
     article = null;
@@ -71,7 +112,11 @@ export function extractMarkdown(
   const content = article.content;
   let markdown = "";
   try {
-    markdown = newTurndown().turndown(content).trim();
+    markdown = newTurndown()
+      .turndown(content)
+      .replace(/[ \t]+\n/g, "\n") // drop trailing whitespace the separator pass left
+      .replace(/\n{3,}/g, "\n\n") // collapse runs of blank lines
+      .trim();
   } catch {
     markdown = "";
   }

@@ -24,6 +24,7 @@ import {
 } from "./capture";
 import { enqueueCapture, flushQueue } from "./queue";
 import { packMarkdownGz } from "./extract";
+import { readEnrichedHtml } from "./page-reader";
 import { parseHTML } from "linkedom";
 
 const BADGE_CLEAR_MS = 2000;
@@ -74,7 +75,7 @@ async function packPageMarkdown(tab: chrome.tabs.Tab): Promise<string | undefine
   try {
     const [result] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: () => document.documentElement.outerHTML,
+      func: readEnrichedHtml,
     });
     html = (result?.result as string) ?? "";
   } catch {

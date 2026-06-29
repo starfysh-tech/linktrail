@@ -23,6 +23,7 @@ import {
   type CaptureState,
 } from "./capture";
 import { extractMarkdown, markdownDocument, markdownFilename, packMarkdownGz } from "./extract";
+import { readEnrichedHtml } from "./page-reader";
 import { enqueueCapture, flushQueue } from "./queue";
 import type { SaveResponse, StatusResponse } from "../../lib/contract";
 
@@ -195,7 +196,7 @@ async function packPageMarkdown(tab: chrome.tabs.Tab): Promise<string | undefine
   try {
     const [result] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: () => document.documentElement.outerHTML,
+      func: readEnrichedHtml,
     });
     html = (result?.result as string) ?? "";
   } catch {
@@ -241,7 +242,7 @@ async function exportMarkdown(tab: chrome.tabs.Tab): Promise<void> {
   try {
     const [result] = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      func: () => document.documentElement.outerHTML,
+      func: readEnrichedHtml,
     });
     html = (result?.result as string) ?? "";
   } catch {
