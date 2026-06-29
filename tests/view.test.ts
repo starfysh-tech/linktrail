@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import {
   parseToken,
   authState,
-  filterItems,
+  itemsSearchUrl,
   sortItems,
   presetSince,
   filterByDate,
@@ -43,18 +43,18 @@ describe("authState", () => {
   });
 });
 
-describe("filterItems", () => {
-  const items = [
-    mk({ id: "1", title: "Prompt caching docs", url: "https://platform.claude.com/x" }),
-    mk({ id: "2", title: "PostgreSQL tips", url: "https://neon.tech/y" }),
-  ];
-  it("matches title or URL, case-insensitively", () => {
-    expect(filterItems(items, "claude").map((i) => i.id)).toEqual(["1"]);
-    expect(filterItems(items, "NEON").map((i) => i.id)).toEqual(["2"]);
-    expect(filterItems(items, "p").map((i) => i.id)).toEqual(["1", "2"]);
+describe("itemsSearchUrl", () => {
+  it("builds the search URL with the query and token encoded", () => {
+    expect(itemsSearchUrl("claude docs", "tok&1")).toBe(
+      "/api/items?token=tok%261&q=claude%20docs",
+    );
   });
-  it("returns everything for an empty query", () => {
-    expect(filterItems(items, "   ")).toHaveLength(2);
+  it("trims the query before building", () => {
+    expect(itemsSearchUrl("  neon  ", "t")).toBe("/api/items?token=t&q=neon");
+  });
+  it("returns null for an empty/whitespace query (no round-trip)", () => {
+    expect(itemsSearchUrl("", "t")).toBeNull();
+    expect(itemsSearchUrl("   ", "t")).toBeNull();
   });
 });
 

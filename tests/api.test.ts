@@ -513,6 +513,54 @@ describe("markdown archive on save (DB-gated)", () => {
   });
 });
 
+describe("GET /api/items — content search ?q= (DB-gated)", () => {
+  const dbit = RUN_DB ? it : it.skip;
+  const auth = {
+    Authorization: `Bearer ${process.env.WRITE_TOKEN}`,
+    "Content-Type": "application/json",
+  };
+  const stamp = Date.now();
+  const list = async (q: string) =>
+    (await (
+      await itemsGET(
+        new Request(
+          `https://x/api/items?token=${process.env.READ_TOKEN}&q=${encodeURIComponent(q)}`,
+        ),
+      )
+    ).json()) as Array<{ url: string }>;
+
+  dbit("matches a term found only in the archived Markdown body", async () => {
+    const url = `https://linktrail-q.example/body-${stamp}`;
+    const needle = `zylophonecapybara${stamp}`; // appears in body only, not title/url
+    await POST(saveReq(auth, { url, title: "Plain Title", markdownGz: packMarkdown(`# Doc\n\n${needle} inside.`) }));
+
+    expect((await list(needle)).map((i) => i.url)).toContain(url);
+    await sql`DELETE FROM saved_items WHERE original_url = ${url}`;
+  });
+
+  dbit("matches title and URL too, case-insensitively", async () => {
+    const url = `https://linktrail-q.example/titlematch-${stamp}`;
+    const tag = `Quokka${stamp}`;
+    await POST(saveReq(auth, { url, title: `${tag} notes` }));
+
+    expect((await list(tag.toLowerCase())).map((i) => i.url)).toContain(url); // title, lowercased
+    expect((await list(`titlematch-${stamp}`)).map((i) => i.url)).toContain(url); // url
+    await sql`DELETE FROM saved_items WHERE original_url = ${url}`;
+  });
+
+  dbit("treats % literally (no wildcard footgun)", async () => {
+    const plain = `https://linktrail-q.example/plain-${stamp}`;
+    const pct = `https://linktrail-q.example/pct-${stamp}`;
+    await POST(saveReq(auth, { url: plain, title: `NoPercentHere${stamp}` }));
+    await POST(saveReq(auth, { url: pct, title: `Has${stamp}%Percent` }));
+
+    const hits = (await list("%")).map((i) => i.url);
+    expect(hits).toContain(pct); // the literal '%' row
+    expect(hits).not.toContain(plain); // '%' must not match everything
+    await sql`DELETE FROM saved_items WHERE original_url IN (${plain}, ${pct})`;
+  });
+});
+
 describe("ensureSchema — memoization (no DB)", () => {
   it("invokes the injected runner exactly once across concurrent + repeat calls", async () => {
     resetSchemaMemoForTests();

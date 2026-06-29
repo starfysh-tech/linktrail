@@ -24,15 +24,16 @@ export function authState(token: string | null | undefined): AuthState {
 }
 
 /**
- * Case-insensitive substring match on title OR URL. An empty/whitespace query
- * matches everything (no filtering).
+ * The items URL for a search query, or null when the query is empty/whitespace
+ * (the caller then renders the already-loaded full history without a round-trip).
+ * Search runs server-side because it now spans the archived Markdown body, which
+ * never ships to the client — so this just builds the request URL; the matching
+ * is SQL. The read token rides in the query like the feed URL.
  */
-export function filterItems(items: Item[], query: string): Item[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return items;
-  return items.filter(
-    (i) => i.title.toLowerCase().includes(q) || i.url.toLowerCase().includes(q),
-  );
+export function itemsSearchUrl(query: string, token: string): string | null {
+  const q = query.trim();
+  if (!q) return null;
+  return `/api/items?token=${encodeURIComponent(token)}&q=${encodeURIComponent(q)}`;
 }
 
 /** Newest-first by capturedAt; returns a new array (does not mutate input). */

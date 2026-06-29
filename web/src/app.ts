@@ -9,7 +9,7 @@
 import {
   parseToken,
   authState,
-  filterItems,
+  itemsSearchUrl,
   filterByDate,
   sortItems,
   domainOf,
@@ -27,6 +27,10 @@ const TOKEN_KEY = "linktrail_read_token";
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
 let allItems: Item[] = [];
+// Server search results for the active query, or null when the search box is
+// empty (render then falls back to the full in-memory history, no round-trip).
+let searchResults: Item[] | null = null;
+let searchSeq = 0; // guards against out-of-order search responses
 let token: string | null = null;
 let preset: DatePreset = "all";
 
@@ -78,11 +82,40 @@ async function load(): Promise<void> {
   }
 }
 
-/** Apply the current search + date preset and paint the list. */
+/**
+ * Run a search. Empty query → clear results and render the full history with no
+ * round-trip. Otherwise fetch server-side matches (title + URL + Markdown body);
+ * a sequence guard drops stale responses so fast typing can't paint old results.
+ */
+async function runSearch(query: string): Promise<void> {
+  const url = token ? itemsSearchUrl(query, token) : null;
+  if (!url) {
+    searchResults = null;
+    render();
+    return;
+  }
+  const seq = ++searchSeq;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const items = sortItems((await res.json()) as Item[]);
+    if (seq !== searchSeq) return; // superseded by a newer query
+    searchResults = items;
+    render();
+  } catch {
+    if (seq !== searchSeq) return;
+    setStatus("Search failed — refresh to retry.");
+  }
+}
+
+/**
+ * Paint the list from the active result set (server search results when a query
+ * is active, else the full history) with the date preset applied client-side.
+ */
 function render(): void {
-  const query = $<HTMLInputElement>("search").value;
   const now = Date.now();
-  const items = filterByDate(filterItems(allItems, query), preset, now);
+  const base = searchResults ?? allItems;
+  const items = filterByDate(base, preset, now);
 
   const list = $<HTMLUListElement>("list");
   list.replaceChildren(...items.map((item) => row(item, now)));
@@ -157,7 +190,13 @@ function init(): void {
     void load();
   });
 
-  $("search").addEventListener("input", render);
+  // Debounce so each keystroke doesn't fire a request; search runs server-side
+  // because it spans the archived Markdown body (not loaded client-side).
+  let searchTimer: ReturnType<typeof setTimeout> | undefined;
+  $("search").addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => void runSearch($<HTMLInputElement>("search").value), 250);
+  });
 
   // Exports always cover the FULL history (allItems), not the filtered view.
   const stamp = new Date().toISOString().slice(0, 10);

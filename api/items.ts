@@ -14,10 +14,11 @@ export async function OPTIONS(): Promise<Response> {
  * Items endpoint: the review web app's full-history read.
  *
  * Read-token auth via the `?token=` query (same convention as api/feed.ts — the
- * read token is the owner's to hold). Returns the entire history as JSON,
- * newest-first; the app does all search/sort/date-filtering client-side. This
- * is also the app's token validation: a 200 means the token is good, a 401 means
- * show the gate.
+ * read token is the owner's to hold). Returns history as JSON, newest-first.
+ * Optional `?q=` filters server-side across title + URL + archived Markdown body
+ * (the body never ships to the client, so content search must run here); the app
+ * still does sort/date-filtering client-side. This is also the app's token
+ * validation: a 200 means the token is good, a 401 means show the gate.
  */
 export async function GET(req: Request): Promise<Response> {
   const params = new URL(req.url).searchParams;
@@ -57,11 +58,26 @@ export async function GET(req: Request): Promise<Response> {
     });
   }
 
-  const rows = await sql`
-    SELECT id, original_url, title, captured_at, markdown IS NOT NULL AS has_markdown
-    FROM saved_items
-    ORDER BY captured_at DESC, id DESC
-  `;
+  // Optional full-text-ish filter: `?q=` matches a literal, case-insensitive
+  // substring across title + URL + the archived Markdown body. `strpos` on a
+  // lower-cased concatenation keeps the term literal (no ILIKE wildcard footgun)
+  // and the value stays a bound parameter. Empty/whitespace `q` returns all.
+  const q = (params.get("q") ?? "").trim();
+  const rows = q
+    ? await sql`
+        SELECT id, original_url, title, captured_at, markdown IS NOT NULL AS has_markdown
+        FROM saved_items
+        WHERE strpos(
+          lower(coalesce(title, '') || ' ' || coalesce(original_url, '') || ' ' || coalesce(markdown, '')),
+          lower(${q})
+        ) > 0
+        ORDER BY captured_at DESC, id DESC
+      `
+    : await sql`
+        SELECT id, original_url, title, captured_at, markdown IS NOT NULL AS has_markdown
+        FROM saved_items
+        ORDER BY captured_at DESC, id DESC
+      `;
   const items: Item[] = rows.map((r) => ({
     id: r.id as string,
     url: r.original_url as string,
