@@ -35,6 +35,7 @@ let verifyOPTIONS: (req: Request) => Promise<Response>;
 let statusGET: (req: Request) => Promise<Response>;
 let statusOPTIONS: (req: Request) => Promise<Response>;
 let itemsGET: (req: Request) => Promise<Response>;
+let itemsDELETE: (req: Request) => Promise<Response>;
 let sql: (typeof import("../lib/db"))["sql"];
 let ensureSchema!: (typeof import("../lib/schema"))["ensureSchema"];
 let resetSchemaMemoForTests!: (typeof import("../lib/schema"))["resetSchemaMemoForTests"];
@@ -52,6 +53,7 @@ beforeAll(async () => {
   statusGET = (await import("../api/status")).GET;
   statusOPTIONS = (await import("../api/status")).OPTIONS;
   itemsGET = (await import("../api/items")).GET;
+  itemsDELETE = (await import("../api/items")).DELETE;
   sql = (await import("../lib/db")).sql;
   ensureSchema = (await import("../lib/schema")).ensureSchema;
   resetSchemaMemoForTests = (await import("../lib/schema")).resetSchemaMemoForTests;
@@ -572,6 +574,56 @@ describe("GET /api/items — content search ?q= (DB-gated)", () => {
     expect(hits).toContain(pct); // the literal '%' row
     expect(hits).not.toContain(plain); // '%' must not match everything
     await sql`DELETE FROM saved_items WHERE original_url IN (${plain}, ${pct})`;
+  });
+});
+
+describe("DELETE /api/items — auth & validation (no DB)", () => {
+  const del = (headers: Record<string, string>, qs = "") =>
+    itemsDELETE(new Request(`https://x/api/items?${qs}`, { method: "DELETE", headers }));
+
+  it("401s without a write token", async () => {
+    const res = await del({}, "id=00000000-0000-0000-0000-000000000000");
+    expect(res.status).toBe(401);
+  });
+  it("401s with the read token (deletes need the WRITE token)", async () => {
+    const res = await del(
+      { Authorization: `Bearer ${process.env.READ_TOKEN}` },
+      "id=00000000-0000-0000-0000-000000000000",
+    );
+    expect(res.status).toBe(401);
+  });
+  it("400s on a missing or malformed id", async () => {
+    const auth = { Authorization: `Bearer ${process.env.WRITE_TOKEN}` };
+    expect((await del(auth, "")).status).toBe(400);
+    expect((await del(auth, "id=not-a-uuid")).status).toBe(400);
+  });
+});
+
+describe("DELETE /api/items — behavior (DB-gated)", () => {
+  const dbit = RUN_DB ? it : it.skip;
+  const auth = { Authorization: `Bearer ${process.env.WRITE_TOKEN}`, "Content-Type": "application/json" };
+
+  dbit("deletes a saved item by id and is then gone from the list", async () => {
+    const url = `https://linktrail-del.example/${Date.now()}`;
+    const saved = (await (await POST(saveReq(auth, { url, title: "Del Me" }))).json()) as { id: string };
+
+    const res = await itemsDELETE(
+      new Request(`https://x/api/items?id=${saved.id}`, { method: "DELETE", headers: auth }),
+    );
+    expect(res.status).toBe(200);
+
+    const rows = await sql`SELECT id FROM saved_items WHERE id = ${saved.id}`;
+    expect(rows.length).toBe(0);
+  });
+
+  dbit("404s when the id doesn't exist", async () => {
+    const res = await itemsDELETE(
+      new Request("https://x/api/items?id=00000000-0000-0000-0000-000000000000", {
+        method: "DELETE",
+        headers: auth,
+      }),
+    );
+    expect(res.status).toBe(404);
   });
 });
 

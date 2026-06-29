@@ -14,6 +14,7 @@ import {
   sortItems,
   domainOf,
   markdownDownloadUrl,
+  itemDeleteUrl,
   relativeTime,
   toJsonExport,
   toBookmarkHtml,
@@ -32,6 +33,8 @@ let allItems: Item[] = [];
 let searchResults: Item[] | null = null;
 let searchSeq = 0; // guards against out-of-order search responses
 let token: string | null = null;
+// The write token authorizes deletes; captured on first delete, kept locally.
+let writeToken: string | null = localStorage.getItem("linktrail_write_token");
 let preset: DatePreset = "all";
 
 /** Resolve the token: URL first (then persisted + URL cleaned), else storage. */
@@ -152,15 +155,13 @@ function row(item: Item, now: number): HTMLLIElement {
   a.append(tile, meta);
   li.append(a);
 
-  // Archived-Markdown affordances (only when an archive exists): a Preview button
-  // that opens the rendered modal, and a Download link to the per-item .md
-  // endpoint (the server's Content-Disposition drives the file save). Both are
-  // siblings of the row's <a>, not nested inside it.
+  // Row actions, siblings of the row's <a> (not nested inside it). Preview +
+  // Download appear only when an archive exists; Delete is always available.
+  const actions = document.createElement("div");
+  actions.className = "row-actions";
+
   const mdUrl = token ? markdownDownloadUrl(item, token) : null;
   if (mdUrl) {
-    const actions = document.createElement("div");
-    actions.className = "row-actions";
-
     const view = document.createElement("button");
     view.type = "button";
     view.className = "icon-btn";
@@ -177,9 +178,81 @@ function row(item: Item, now: number): HTMLLIElement {
     dl.innerHTML = ICON_DOWNLOAD;
 
     actions.append(view, dl);
-    li.append(actions);
   }
+
+  // Delete: click-to-confirm (no native dialog). First click arms it for a few
+  // seconds; a second click within the window performs the write-token DELETE.
+  const del = document.createElement("button");
+  del.type = "button";
+  del.className = "icon-btn icon-danger";
+  del.title = "Delete";
+  del.setAttribute("aria-label", `Delete ${item.title || domain}`);
+  del.innerHTML = ICON_TRASH;
+  let confirming = false;
+  let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+  del.addEventListener("click", () => {
+    if (!confirming) {
+      confirming = true;
+      del.classList.add("confirm");
+      del.title = "Click again to delete";
+      confirmTimer = setTimeout(() => {
+        confirming = false;
+        del.classList.remove("confirm");
+        del.title = "Delete";
+      }, 3000);
+      return;
+    }
+    clearTimeout(confirmTimer);
+    void deleteItem(item);
+  });
+  actions.append(del);
+
+  li.append(actions);
   return li;
+}
+
+// Untitled UI icon (trash-01): static, trusted constant.
+const ICON_TRASH =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 6v-.8c0-1.1201 0-1.6802-.218-2.108a2 2 0 0 0-.874-.874C14.4802 2 13.9201 2 12.8 2h-1.6c-1.1201 0-1.6802 0-2.108.218a2 2 0 0 0-.874.874C8 3.5198 8 4.08 8 5.2V6m2 5.5v5m4-5v5M3 6h18m-2 0v11.2c0 1.6802 0 2.5202-.327 3.162a3 3 0 0 1-1.311 1.311C16.7202 22 15.8802 22 14.2 22H9.8c-1.6802 0-2.5202 0-3.162-.327a3 3 0 0 1-1.311-1.311C5 19.7202 5 18.8802 5 17.2V6"/></svg>';
+
+const WRITE_TOKEN_KEY = "linktrail_write_token";
+
+/** The write token authorizes deletes. Prompt once, then reuse from localStorage
+ *  (cleared + re-prompted if the backend rejects it). */
+function ensureWriteToken(): string | null {
+  if (writeToken) return writeToken;
+  const entered = window.prompt(
+    "Enter your write token to delete (stored locally in this browser):",
+  );
+  const value = entered?.trim();
+  if (!value) return null;
+  writeToken = value;
+  localStorage.setItem(WRITE_TOKEN_KEY, value);
+  return value;
+}
+
+/** DELETE an item (write-token auth), then drop it from state and repaint. */
+async function deleteItem(item: Item): Promise<void> {
+  const wt = ensureWriteToken();
+  if (!wt) return;
+  try {
+    const res = await fetch(itemDeleteUrl(item.id), {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${wt}` },
+    });
+    if (res.status === 401) {
+      localStorage.removeItem(WRITE_TOKEN_KEY);
+      writeToken = null;
+      setStatus("Delete failed — that write token was rejected. Try again.");
+      return;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    allItems = allItems.filter((i) => i.id !== item.id);
+    if (searchResults) searchResults = searchResults.filter((i) => i.id !== item.id);
+    render();
+  } catch {
+    setStatus("Couldn’t delete — refresh and retry.");
+  }
 }
 
 // Untitled UI icons (eye, download-cloud-02): static, trusted constants.

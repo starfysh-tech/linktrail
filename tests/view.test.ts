@@ -8,6 +8,7 @@ import {
   filterByDate,
   domainOf,
   markdownDownloadUrl,
+  itemDeleteUrl,
   hasMermaid,
   relativeTime,
   toJsonExport,
@@ -102,6 +103,14 @@ describe("domainOf", () => {
   });
   it("falls back to raw input when unparseable", () => {
     expect(domainOf("not a url")).toBe("not a url");
+  });
+});
+
+describe("itemDeleteUrl", () => {
+  it("targets the item by id and keeps the token OUT of the URL", () => {
+    const u = itemDeleteUrl("42 a");
+    expect(u).toBe("/api/items?id=42%20a");
+    expect(u).not.toContain("token");
   });
 });
 

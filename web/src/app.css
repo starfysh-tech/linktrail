@@ -264,6 +264,15 @@ button.primary {
   height: 18px;
   display: block;
 }
+.icon-danger:hover {
+  color: var(--fail);
+}
+/* Armed (first click) delete: clearly destructive until it reverts. */
+.icon-btn.confirm {
+  color: var(--fail);
+  border-color: var(--fail);
+  background: var(--glass-2);
+}
 
 /* Rendered-Markdown preview modal */
 .preview {

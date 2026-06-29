@@ -88,6 +88,34 @@ export async function GET(req: Request): Promise<Response> {
   return json(items, 200);
 }
 
+/** A saved item id is a UUID — guard so a malformed id is a clean 400, not a
+ *  Postgres "invalid input syntax for type uuid" 500. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Delete a saved item by id. WRITE-token authorized (Bearer): deletion is a
+ * mutation, so it must NOT be reachable with the feed's read token (which is
+ * shared more freely in the feed URL). 404 when the row doesn't exist.
+ */
+export async function DELETE(req: Request): Promise<Response> {
+  const { writeToken } = await getTokens();
+  const auth = req.headers.get("authorization");
+  if (!writeToken || auth !== `Bearer ${writeToken}`) {
+    return json({ error: "unauthorized" }, 401);
+  }
+  const id = new URL(req.url).searchParams.get("id");
+  if (!id || !UUID_RE.test(id)) {
+    return json({ error: "invalid-id" }, 400);
+  }
+
+  await ensureSchema();
+  const deleted = await sql`DELETE FROM saved_items WHERE id = ${id} RETURNING id`;
+  if (deleted.length === 0) {
+    return json({ error: "not-found" }, 404);
+  }
+  return json({ deleted: deleted[0].id as string }, 200);
+}
+
 /**
  * Derive a safe `.md` download filename from the page title (falling back to the
  * URL host). Kept inline — the extension owns its own filename helper; sharing

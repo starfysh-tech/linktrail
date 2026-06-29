@@ -79,6 +79,14 @@ export function markdownDownloadUrl(item: Item, token: string): string | null {
 }
 
 /**
+ * The endpoint for deleting a single item. The write token is NOT in the URL —
+ * it's sent in the Authorization header so it can't leak into history/logs.
+ */
+export function itemDeleteUrl(id: string): string {
+  return `/api/items?id=${encodeURIComponent(id)}`;
+}
+
+/**
  * Whether the Markdown contains a fenced ```mermaid block. Used to decide
  * whether to lazy-load the (heavy) Mermaid engine for a preview — pure so the
  * decision is unit-tested without pulling Mermaid into the test/runtime.
