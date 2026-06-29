@@ -51,6 +51,17 @@
       <p id="status" class="status" hidden></p>
     </main>
 
+    <!-- Rendered-Markdown preview modal (filled on demand by app.ts). -->
+    <dialog id="preview" class="preview" aria-labelledby="preview-title">
+      <div class="preview-head">
+        <h2 id="preview-title" class="preview-title"></h2>
+        <button id="preview-close" type="button" class="icon-btn" title="Close" aria-label="Close preview">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div id="preview-body" class="md-body"></div>
+    </dialog>
+
     <script type="module" src="./src/app.ts"></script>
   </body>
 </html>

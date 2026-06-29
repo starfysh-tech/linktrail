@@ -8,6 +8,7 @@ import {
   filterByDate,
   domainOf,
   markdownDownloadUrl,
+  hasMermaid,
   relativeTime,
   toJsonExport,
   toBookmarkHtml,
@@ -101,6 +102,18 @@ describe("domainOf", () => {
   });
   it("falls back to raw input when unparseable", () => {
     expect(domainOf("not a url")).toBe("not a url");
+  });
+});
+
+describe("hasMermaid", () => {
+  it("detects a fenced mermaid block (backticks or tildes, case-insensitive, indented)", () => {
+    expect(hasMermaid("# Hi\n\n```mermaid\ngraph TD; A-->B\n```\n")).toBe(true);
+    expect(hasMermaid("~~~Mermaid\nsequenceDiagram\n~~~")).toBe(true);
+    expect(hasMermaid("text\n  ```mermaid\nflowchart LR\n```")).toBe(true);
+  });
+  it("is false for plain markdown and non-mermaid fences", () => {
+    expect(hasMermaid("# Title\n\n```js\nconst a = 1;\n```")).toBe(false);
+    expect(hasMermaid("just prose mentioning mermaid inline")).toBe(false);
   });
 });
 

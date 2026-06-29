@@ -78,6 +78,17 @@ export function markdownDownloadUrl(item: Item, token: string): string | null {
   return `/api/items?id=${encodeURIComponent(item.id)}&format=md&token=${encodeURIComponent(token)}`;
 }
 
+/**
+ * Whether the Markdown contains a fenced ```mermaid block. Used to decide
+ * whether to lazy-load the (heavy) Mermaid engine for a preview — pure so the
+ * decision is unit-tested without pulling Mermaid into the test/runtime.
+ */
+export function hasMermaid(markdown: string): boolean {
+  // A fence opening with an info string of "mermaid" (optionally indented),
+  // case-insensitive, at a line start.
+  return /^[ \t]*(```|~~~)[ \t]*mermaid\b/im.test(markdown);
+}
+
 /** Bare domain for display (drops scheme + leading www.); raw input on failure. */
 export function domainOf(url: string): string {
   try {
