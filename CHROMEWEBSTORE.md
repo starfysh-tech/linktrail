@@ -24,8 +24,10 @@ There's no account and no sign-in. You point Linktrail at your own private backe
 FEATURES
 • One-tap save from the toolbar — click the icon, glance at the page title, and hit Save.
 • Instant keyboard save — press the shortcut (Ctrl+Shift+L, or Command+Shift+L on Mac) and the page is saved silently, with a small badge to confirm.
+• Keeps a readable copy — each save also archives a clean Markdown copy of the page's article to your backend, so you can read it later even if the original changes or disappears.
 • Your reading history as an RSS feed — saved pages appear newest-first in a private feed you subscribe to in your own reader.
-• Search your whole history — a private web view (opened from the popup's History button) lets you search and browse everything you've ever saved, not just the latest items.
+• Search by contents — a private web view (opened from the popup's History button) lets you search everything you've saved by what's inside the page, not just the title.
+• Preview, download, delete — open a saved page's archived Markdown in a built-in reader (rendered, with diagrams), download it as a .md file, or remove items you no longer want.
 • Private by design — your saved pages go only to a backend you set up and own. There's no shared Linktrail server.
 • Settings that follow you — your setup is remembered across the Chrome profiles you sign into, so you only configure it once.
 • Never lose a save — if a page can't reach your backend (you're offline, or it's briefly down), it's queued and retried automatically until it goes through.
@@ -43,6 +45,7 @@ Linktrail does not run a shared server, does not collect analytics, and does not
 
 PERMISSIONS
 • "Read the current tab" (activeTab) — used only when you click the toolbar icon or press the shortcut, to read the open page's address and title so it can be saved. Linktrail never watches your tabs in the background.
+• "Read page content on demand" (scripting) — used only at the moment you save or run "Export as Markdown" to read the rendered page once and turn it into a clean Markdown copy. It runs only on the tab you're acting on, only when you act — never in the background.
 • "Storage" — remembers your backend address, write token, and feed address so you don't re-enter them on every computer.
 • "Notifications" — shows a brief message if a save needs your attention or when queued pages finish syncing, so you're never left guessing.
 • "Alarms" — lets Linktrail periodically retry saves that were queued while you were offline, even when the popup is closed.
@@ -53,7 +56,7 @@ Linktrail needs a backend you run yourself — there is no shared Linktrail serv
 SUPPORT
 Questions, bugs, or suggestions? Open an issue on the project's GitHub repository or email the address on this listing.
 
-Version 0.8.1 — Initial release: toolbar save, keyboard-shortcut save, and private RSS reading history.
+Version 0.16.0 — Toolbar + keyboard-shortcut save, private RSS reading history, and a cleaned Markdown copy of each saved page you can search, preview, download, and delete in your own review web app.
 
 **Category**
 
@@ -95,6 +98,7 @@ there are no separate light/dark shots).
 | Permission | Type | Justification |
 |------------|------|---------------|
 | activeTab | permissions | Reads the current tab's URL and title only at the moment the user explicitly triggers a save — either clicking the toolbar icon or pressing the keyboard shortcut — so that page can be added to their reading history. The extension has no background or continuous access to tabs and reads nothing until the user acts. |
+| scripting | permissions | Used only at the moment the user explicitly saves a page or runs "Export as Markdown": injects a one-shot read of the active tab's rendered content (via `chrome.scripting.executeScript`) so the page can be converted to a clean Markdown copy and archived to the user's own backend. It runs only on the tab the user is acting on, only on that user gesture (which also grants `activeTab`) — never in the background, never on other tabs, and reads no page content until the user acts. |
 | storage | permissions | Persists the user's own configuration — their backend URL, write token, and feed URL — using `chrome.storage.sync` so the one-time setup roams across the user's Chrome profiles and does not have to be re-entered on each machine. No browsing data or page content is stored. |
 | notifications | permissions | Shows a brief notification when a save needs the user's attention (e.g. a misconfiguration), is queued because the backend was unreachable, or when previously-queued pages finish syncing. Never used for marketing, promotions, or recurring alerts. |
 | alarms | permissions | Schedules a periodic background retry of saves that were queued while the user was offline or the backend was briefly unreachable, so a flagged page eventually reaches the user's trail without manual action. Used only for this retry timer — no tracking or scheduled content. |
@@ -107,7 +111,7 @@ there are no separate light/dark shots).
 
 ### Data Collection
 
-**Does the extension collect user data?** Yes — but only the page URL, page title, and capture timestamp, and only transmitted to a backend the user themselves configures and owns. The Linktrail publisher operates no server and receives nothing.
+**Does the extension collect user data?** Yes — the page URL, page title, capture timestamp, and a cleaned Markdown copy of the page's content — and only transmitted to a backend the user themselves configures and owns. The page content is read only at the moment the user saves or exports (on their gesture), never in the background. The Linktrail publisher operates no server and receives nothing.
 
 | Data Type | Collected? | Transmitted Off-Device? | Purpose | Shared with Third Parties? |
 |-----------|-----------|------------------------|---------|---------------------------|
@@ -119,7 +123,7 @@ there are no separate light/dark shots).
 | Location | No | — | — | No |
 | Web history | Yes — the URL and title of pages the user explicitly chooses to save (not browsing history at large) | Yes — sent only to the user's own configured backend | Build the user's private reading history that they requested | No |
 | User activity | No (no analytics, no clickstream, no telemetry) | — | — | No |
-| Website content | No — only the page's URL and title, never page body/content | URL + title sent only to the user's own backend | Identify the saved page in the feed | No |
+| Website content | Yes — a cleaned Markdown copy of the page's main content, read only when the user explicitly saves or exports (on their gesture), never in the background | Yes — sent only to the user's own configured backend | Archive a readable copy the user can search, preview, and download in their own history | No |
 
 Notes for the disclosure form:
 - The user's configuration (backend URL, write token, feed URL) is stored with `chrome.storage.sync`, which means Chrome transmits it to Google's sync servers to roam across the user's profiles. Declare `chrome.storage.sync` use accordingly.
@@ -192,6 +196,11 @@ and published builds.
 | 0.11.0 | 2026-06-25 | Optional host access requested at runtime for the user's backend origin, so CORS-less self-hosted backends work (additive; CORS fallback retained). | Draft |
 | 0.12.0 | 2026-06-25 | Popup "History" chip opening a private, read-only review web app (search/browse full history) at `/app`, backed by new `GET /api/items`. No new permission. | Draft |
 | 0.13.0 | 2026-06-25 | Options page links to the self-hosting guide (Deploy-to-Vercel backend setup); no permission change. | Draft |
+| 0.14.0 | 2026-06-28 | Local "Export page as Markdown" from the popup. **New `scripting` permission** (reads the rendered page on the user's gesture). | Draft |
+| 0.15.0 | 2026-06-28 | Archive a cleaned Markdown copy of each page on save (sent to the user's own backend alongside URL/title). Disclosure now: Website content = Yes. | Draft |
+| 0.16.0 | 2026-06-29 | Much-improved Markdown extraction for app-style pages (noise stripping, whitespace separator pass, GFM tables). No permission change. | Draft |
+
+> Backend/web-only changes (no extension version bump) since 0.12.0's review app: content search over the archived Markdown, a rendered-Markdown preview modal (with Mermaid diagrams), per-item `.md` download, and item delete (`DELETE /api/items`). These live in the user's own backend + the private review web app, not in the extension's permission surface.
 
 ## Review Notes
 
@@ -199,14 +208,15 @@ and published builds.
 
 Manifest & package
 - [x] `manifest_version` is 3. (Confirmed in `extension/manifest.config.ts`.)
-- [x] Version bumped vs. any prior published version (currently **0.8.1**).
+- [x] Version bumped vs. any prior published version (currently **0.16.0**).
 - [x] Manifest `name` is exactly "Linktrail" and matches this listing.
 - [x] Manifest `description` ("Capture the current tab into a personal RSS reading history.") is ≤ 132 chars and consistent with the short description above.
 - [x] Manifest `key` handled: `bun run package` strips `key` from the zip (the store rejects it); dev load-unpacked keeps it. Published ID is store-assigned (backend tokens aren't ID-scoped, so nothing breaks).
-- [x] Built ZIP excludes dev files. `bun run package` zips ONLY `dist/extension` → `dist/linktrail-0.8.1.zip` (no source, `.git`, env, docs, or `CHROMEWEBSTORE.md`).
+- [x] Built ZIP excludes dev files. `bun run package` zips ONLY `dist/extension` → `dist/linktrail-<version>.zip` (no source, `.git`, env, docs, or `CHROMEWEBSTORE.md`).
 
 Permissions
-- [x] Manifest requests exactly `["activeTab","storage","notifications","alarms"]` at install — no install-time `host_permissions`, no `<all_urls>`. `optional_host_permissions` (`https://*/*`, `http://localhost/*`) is requested at runtime, narrowed to the single user-entered backend origin.
+- [x] Manifest requests exactly `["activeTab","storage","notifications","alarms","scripting"]` at install — no install-time `host_permissions`, no `<all_urls>`. `optional_host_permissions` (`https://*/*`, `http://localhost/*`) is requested at runtime, narrowed to the single user-entered backend origin.
+- [ ] **`scripting` justification submitted** — new since 0.14.0 (reads the rendered page on the user's gesture to archive Markdown). Fill its dashboard justification from the Permissions Justification table above.
 - [x] Each permission's dashboard justification is filled in from the Permissions Justification table above (plain-English, feature-specific).
 
 Listing content

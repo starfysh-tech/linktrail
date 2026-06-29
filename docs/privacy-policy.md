@@ -1,6 +1,6 @@
 # Privacy Policy for Linktrail
 
-Last updated: 2026-06-25
+Last updated: 2026-06-29
 
 Linktrail is a Chrome extension that saves pages you choose into your own private,
 RSS-based reading history. This policy explains exactly what information Linktrail
@@ -11,16 +11,19 @@ save goes only to a backend that you set up and control.
 ## What Data We Collect
 
 When — and only when — you explicitly save a page (by clicking the Linktrail
-toolbar icon or pressing the keyboard shortcut), Linktrail reads three things from
-the current tab:
+toolbar icon or pressing the keyboard shortcut), Linktrail reads from the current
+tab:
 
 - The page's address (URL)
 - The page's title
 - The time you saved it (timestamp)
+- A cleaned **Markdown copy of the page's main content**, so you can read,
+  search, and download what you saved later
 
-Linktrail does not read the contents of the page, does not track your browsing,
-and does not run in the background watching your tabs. It reads nothing until you
-take an explicit action to save.
+To make that Markdown copy, Linktrail reads the rendered content of the page —
+but only at the moment you explicitly save (or use the "Export as Markdown"
+action). It does not track your browsing and does not run in the background
+watching your tabs: it reads nothing until you take an explicit action.
 
 Linktrail also stores your own configuration so you don't have to re-enter it:
 
@@ -33,8 +36,9 @@ from your browsing.
 
 ## How Data Is Stored
 
-- Your saved pages (URL, title, timestamp) are sent to the backend **you** set up
-  and own. Linktrail's publisher operates no shared server and stores none of this.
+- Your saved pages (URL, title, timestamp, and the Markdown copy of the page) are
+  sent to the backend **you** set up and own. Linktrail's publisher operates no
+  shared server and stores none of this.
 - Your configuration (backend address, write token, feed address) is stored using
   Chrome's synced storage (`chrome.storage.sync`). This means Chrome transmits that
   configuration to Google's sync servers so it can follow you across the Chrome
@@ -43,8 +47,9 @@ from your browsing.
 
 ## How Data Is Used
 
-- The page URL, title, and timestamp are used to add the page to your private
-  reading history on your backend, which you then read as an RSS feed.
+- The page URL, title, timestamp, and Markdown copy are used to build your private
+  reading history on your backend, which you then read as an RSS feed and browse,
+  search, preview, download, or delete in your private review web app.
 - Your write token is used to authorize saving to your backend. Your feed address
   (with its read token) is used to fetch your feed.
 - That is the extension's only purpose. There is no analytics, telemetry,

@@ -22,15 +22,22 @@ The capture flow:
   toolbar icon (a quiet `—` on non-capturable pages like `chrome://`).
 - **Toolbar button** → a graphite glass popup for a deliberate, visible save.
 
-Both paths POST to **`/api/save`**, which:
+On save, the extension also extracts a **cleaned Markdown copy of the page**
+(Mozilla Readability + Turndown, run in the page so app-style markup converts
+cleanly), gzips it, and sends it along. Both paths POST to **`/api/save`**, which:
 
 1. Authenticates the request against the bearer **write token**.
 2. **Normalizes** the URL to a canonical identity.
 3. **Upserts** into Neon — same identity = same row, so re-saving dedupes
-   instead of creating phantom duplicates.
+   instead of creating phantom duplicates. A re-save **refreshes** the stored
+   Markdown; a save that carries no Markdown never wipes an existing archive.
 
 Saved items are served back as RSS 2.0 (newest-first) from **`/api/feed`**,
-guarded by an unguessable **read token** carried in the feed URL.
+guarded by an unguessable **read token** carried in the feed URL. The same
+history is browsable in a private review web app (opened from the popup's
+**History** button): **search by page content** (not just title/URL), **preview**
+the archived Markdown rendered in a modal (including Mermaid diagrams),
+**download** the `.md`, or **delete** an item.
 
 > **Shared normalization (critical):** `lib/normalize.ts` is imported by **both**
 > the extension and the backend. Both sides must compute the *identical* canonical
@@ -48,11 +55,13 @@ api/         Vercel Functions (deployed)
   feed.ts    GET  — RSS 2.0 feed, read-token guarded
   verify.ts  GET  — health/connectivity check
   status.ts  GET  — is this URL already saved? (popup "already saved" hint)
-  items.ts   GET  — full history as JSON, read-token guarded (review app)
+  items.ts   GET  — history JSON (read token); ?q= content search;
+             ?id=&format=md downloads one item's archived Markdown.
+             DELETE — remove one item (write-token guarded)
   setup.ts   GET/POST — first-run token reveal (zero-input self-host deploy)
 lib/         Shared code (imported by api/, extension/, web/)
   normalize.ts  canonical URL identity — shared by ALL sides
-  contract.ts   request/response shapes
+  contract.ts   request/response shapes (SaveRequest carries optional markdownGz)
   cors.ts       CORS handling
   db.ts         Neon HTTP-driver access
   schema.ts     lazy, idempotent ensureSchema (auto-migrate on first use)
@@ -62,8 +71,13 @@ extension/   MV3 extension (Vite + @crxjs/vite-plugin)
   manifest.config.ts            manifest (pinned key → stable extension ID)
   popup.html / options.html     entry pages
   src/{sw,popup,options,capture,queue}.ts + css, icons/
+  src/extract.ts                pure: Readability+Turndown → Markdown, cleanup, gz
+  src/page-reader.ts            in-page DOM read + whitespace separator pass
+  src/turndown-plugin-gfm.d.ts  local type shim for the GFM plugin
 web/         Review app — vanilla Vite, served at /app/ (same origin, deployed)
-  index.html, src/{app,view}.ts + app.css
+  index.html, src/{app,view,preview}.ts + app.css
+                view.ts: search/sort/filter, export + delete URLs, mermaid detect
+                preview.ts: lazy marked → DOMPurify → render (+ Mermaid)
 scripts/
   migrate.ts        create the saved_items table (+ dev backfill/dedupe)
   reset-items.ts    clear saved items
@@ -145,11 +159,15 @@ repeatable and leave nothing behind. The test seams:
   `lib/schema`) are unit-tested without a DB.
 - **Extension capture decisions** (unit) — pure functions (is-capturable, payload
   assembly, response→state mapping, queue decisions) with `chrome.*`/`fetch` mocked.
+- **Markdown extraction** (`extension/src/extract.ts`, unit) — `cleanDocument`
+  noise/empty-alt stripping, GFM table conversion, filename derivation, gz cap.
 - **Web review-app decisions** (`web/src/view.ts`, unit) — search/sort/date-filter,
-  token parse, auth-state, and the JSON/bookmark/OPML export serializers.
+  token parse, auth-state, the JSON/bookmark/OPML export serializers, the
+  search/delete URL builders, and Mermaid-fence detection.
 
-Impure glue (service worker, popup, options, web app wiring) is manual-verify. No
-E2E or visual tests.
+Impure glue (service worker, popup, options, web app wiring) is manual-verify —
+including the in-page separator pass (`page-reader.ts`, needs live layout) and the
+preview modal's rendered Markdown/diagrams. No E2E or visual tests.
 
 ## Deploy
 
@@ -172,19 +190,21 @@ docs are excluded via `.vercelignore`. Production is aliased to
 
 | Method | Path | Auth |
 | ------ | ---- | ---- |
-| `POST` | `/api/save` | `Authorization: Bearer <WRITE_TOKEN>`; body `{ url, title }` |
+| `POST` | `/api/save` | `Authorization: Bearer <WRITE_TOKEN>`; body `{ url, title, markdownGz? }` (gzipped+base64 Markdown archive) |
 | `GET`  | `/api/feed?token=<READ_TOKEN>` | read token in query string |
 | `GET`  | `/api/verify` | `Authorization: Bearer <WRITE_TOKEN>` — health / connectivity check |
 | `GET`  | `/api/status?url=<url>` | `Authorization: Bearer <WRITE_TOKEN>` — is this URL already saved? |
-| `GET`  | `/api/items?token=<READ_TOKEN>` | read token in query string — full history as JSON (review app) |
+| `GET`  | `/api/items?token=<READ_TOKEN>` | read token — history JSON; `&q=` content search; `&id=<id>&format=md` downloads one item's archived Markdown |
+| `DELETE` | `/api/items?id=<id>` | `Authorization: Bearer <WRITE_TOKEN>` — delete one item |
 | `GET`/`POST` | `/api/setup` | none — first-run token reveal for env-less deploys (`POST` claims once; no-op if env tokens are set) |
 
 ## Conventions
 
 - **Git:** commit and push directly to `main` (solo personal project; no feature
   branches or PRs).
-- **Versioning:** bump the minor per slice (`0.<slice>.0`), keeping
-  `extension/manifest.config.ts` and `package.json` in sync. Current: **0.13.0**.
+- **Versioning:** bump the extension version when the **extension** changes,
+  keeping `extension/manifest.config.ts` and `package.json` in sync. Backend-only
+  or web-app-only changes do **not** bump. Current: **0.16.0**.
 - **Secrets:** never committed — `.env.local` and `.secrets.local` are gitignored.
 - **Auth:** two separate tokens — a bearer **write token** (save endpoint) and a
   distinct unguessable **read token** (in the feed URL).
@@ -198,13 +218,20 @@ grain. Light/dark parity is mandatory: the material stays graphite in both modes
 
 ## Status
 
-v1 (slices 1–5) plus the post-v1 enhancements are shipped — see `docs/issues/01–08`:
+v1 (slices 1–5) plus the post-v1 enhancements are shipped — see `docs/issues/01–08`
+and `CHANGELOG.md`:
 
 - Review web app — search/browse your full history (slice 6).
 - Self-hosting via a Deploy-to-Vercel button (slice 7).
 - Zero-input deploy — first-run token reveal at `/api/setup` (slice 8).
 - Offline retry queue, popup "already saved" hint, and `optional_host_permissions`.
 - History backup & export (JSON / bookmarks / OPML) + CLI `export`/`import`.
+- **Markdown archive on save** — a cleaned `.md` copy of each page (v0.14.0–0.16.0),
+  with much-improved extraction for app-style pages.
+- **Content search** over the archived Markdown, a **rendered preview** modal
+  (with Mermaid diagrams), per-item **`.md` download**, and **delete**.
 
-**Open:** the Chrome Web Store listing is submitted and awaiting review (see
-`CHROMEWEBSTORE.md`).
+**Open:** the Chrome Web Store listing is still pre-publish — the new `scripting`
+permission (added for Markdown extraction) needs its justification in the listing,
+and the screenshots/assets should cover the new review-app features (see
+`CHROMEWEBSTORE.md` and `TODO.md`).

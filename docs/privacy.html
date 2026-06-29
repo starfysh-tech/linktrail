@@ -40,29 +40,30 @@
     <svg viewBox="0 0 24 24"><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/></svg> Linktrail
   </a>
   <h1>Privacy Policy</h1>
-  <p class="updated">Last updated: 25 June 2026</p>
+  <p class="updated">Last updated: 29 June 2026</p>
 
   <div class="card">
     <p>Linktrail is a Chrome extension that saves pages you choose into your own private, RSS-based reading history. In plain terms: <strong>Linktrail's publisher does not run a server, does not collect your data, and never sees what you save.</strong> Everything you save goes only to a backend that you set up and control.</p>
 
     <h2>What data we collect</h2>
-    <p>When — and only when — you explicitly save a page (by clicking the Linktrail toolbar icon or pressing the keyboard shortcut), Linktrail reads three things from the current tab:</p>
+    <p>When — and only when — you explicitly save a page (by clicking the Linktrail toolbar icon or pressing the keyboard shortcut), Linktrail reads from the current tab:</p>
     <ul>
       <li>The page's address (URL)</li>
       <li>The page's title</li>
       <li>The time you saved it (timestamp)</li>
+      <li>A cleaned <strong>Markdown copy of the page's main content</strong>, so you can read, search, and download what you saved later</li>
     </ul>
-    <p>Linktrail does not read the contents of the page, does not track your browsing, and does not run in the background watching your tabs. It reads nothing until you take an explicit action to save.</p>
+    <p>To make that Markdown copy, Linktrail reads the rendered content of the page — but only at the moment you explicitly save (or use the "Export as Markdown" action). It does not track your browsing and does not run in the background watching your tabs: it reads nothing until you take an explicit action.</p>
     <p>Linktrail also stores your own configuration so you don't have to re-enter it: your backend address, your write token, and your private feed address (which contains a separate read token). This configuration is information you provide during setup — it is not collected from your browsing.</p>
 
     <h2>How data is stored</h2>
     <ul>
-      <li>Your saved pages (URL, title, timestamp) are sent to the backend <strong>you</strong> set up and own. Linktrail's publisher operates no shared server and stores none of this.</li>
+      <li>Your saved pages (URL, title, timestamp, and the Markdown copy of the page) are sent to the backend <strong>you</strong> set up and own. Linktrail's publisher operates no shared server and stores none of this.</li>
       <li>Your configuration is stored using Chrome's synced storage (<code>chrome.storage.sync</code>), so Chrome transmits it to Google's sync servers to follow you across the Chrome profiles you're signed into. Your saved pages are <strong>not</strong> stored this way — only your setup is.</li>
     </ul>
 
     <h2>How data is used</h2>
-    <p>The URL, title, and timestamp are used to add the page to your private reading history on your backend, which you then read as an RSS feed. Your write token authorizes saving; your feed address (with its read token) fetches your feed. That is the extension's only purpose — there is no analytics, telemetry, advertising, or profiling of any kind.</p>
+    <p>The URL, title, timestamp, and Markdown copy are used to build your private reading history on your backend, which you then read as an RSS feed and browse, search, preview, download, or delete in your private review web app. Your write token authorizes saving; your feed address (with its read token) fetches your feed. That is the extension's only purpose — there is no analytics, telemetry, advertising, or profiling of any kind.</p>
 
     <h2>Third-party services</h2>
     <p>Linktrail uses no analytics, advertising, or tracking services. It sends your saved pages to a backend <strong>you</strong> configure and operate; any data practices there are governed by how you set it up. Chrome's synced storage relies on Google's sync infrastructure to roam your configuration, governed by Google's own privacy terms.</p>
